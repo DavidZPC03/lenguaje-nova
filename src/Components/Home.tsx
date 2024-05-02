@@ -2,6 +2,9 @@ import { Box, Button, Flex, IconButton, Text } from '@chakra-ui/react';
 import ReactCodeMirror from '@uiw/react-codemirror';
 import { FormEvent, useCallback, useState } from 'react';
 import { FiUpload } from 'react-icons/fi';
+import { javascript } from '@codemirror/lang-javascript';
+import { debounce } from 'lodash';
+import TokenDisplay from './TokenDisplay'; // Importamos el nuevo componente
 import { tokenizeCode } from '../services/api';
 
 export default function Home() {
@@ -46,17 +49,7 @@ export default function Home() {
               />
             </Box>
             <Flex gap={4}>
-              <Button
-                type='submit'
-                mt={4}
-                colorScheme='blue'
-                width={'100%'}
-                onClick={() => {
-                  const lexer = createLexer(value);
-                  lexer.tokenize();
-                  setTokens(lexer.getTokens());
-                }}
-              >
+              <Button type='submit' mt={4} colorScheme='blue' width={'100%'}>
                 Confirmar
               </Button>
             </Flex>
