@@ -1,11 +1,9 @@
-import { Box, Button, Flex, IconButton, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton, List, ListItem, Text } from '@chakra-ui/react';
+import { javascript } from '@codemirror/lang-javascript';
 import ReactCodeMirror from '@uiw/react-codemirror';
+import { debounce } from 'lodash';
 import { FormEvent, useCallback, useState } from 'react';
 import { FiUpload } from 'react-icons/fi';
-import { javascript } from '@codemirror/lang-javascript';
-import { createLexer } from '../class/Lexer';
-import { debounce } from 'lodash';
-import TokenDisplay from './TokenDisplay'; // Importamos el nuevo componente
 
 export default function Home() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -13,7 +11,7 @@ export default function Home() {
   }
 
   const [value, setValue] = useState('');
-  const [tokens, setTokens] = useState([]);
+  const [tokens, setTokens] = useState<{ [key: string]: string }[]>();
 
   const onChange = useCallback(
     debounce((val: string) => {
@@ -63,9 +61,7 @@ export default function Home() {
                 colorScheme='blue'
                 width={'100%'}
                 onClick={() => {
-                  const lexer = createLexer(value);
-                  lexer.tokenize();
-                  setTokens(lexer.getTokens());
+                  setTokens(tokens);
                 }}
               >
                 Confirmar
@@ -73,7 +69,26 @@ export default function Home() {
             </Flex>
           </form>
         </Box>
-        <TokenDisplay tokens={tokens} /> {/* Utilizamos el componente TokenDisplay */}
+        <Box flex={0.5}>
+          <Text>Tokens</Text>
+          <Box
+            h={'600px'}
+            borderWidth={1}
+            borderRadius={8}
+            overflow={'auto'}
+            px={4}
+            p={2}
+            mt={6}
+          >
+            <List spacing={3}>
+              {tokens?.map((token, index) => (
+                <ListItem key={index}>
+                  <Text as='b'>{token[0]}</Text>: <Text as='i'>{token[1]}</Text>
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        </Box>
       </Flex>
     </>
   );

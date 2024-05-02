@@ -14,6 +14,9 @@ importers:
       '@codemirror/lang-javascript':
         specifier: ^6.2.2
         version: 6.2.2
+      '@types/lodash':
+        specifier: ^4.17.0
+        version: 4.17.0
       '@uiw/react-codemirror':
         specifier: ^4.22.0
         version: 4.22.0(@babel/runtime@7.23.2)(@codemirror/autocomplete@6.16.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)(@lezer/common@1.2.1))(@codemirror/language@6.10.1)(@codemirror/lint@6.7.0)(@codemirror/search@6.5.6)(@codemirror/state@6.4.1)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.26.3)(codemirror@6.0.1(@lezer/common@1.2.1))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -1065,8 +1068,8 @@ packages:
   '@types/lodash.mergewith@4.6.7':
     resolution: {integrity: sha512-3m+lkO5CLRRYU0fhGRp7zbsGi6+BZj0uTVSwvcKU+nSlhjA9/QRNfuSGnD2mX6hQA7ZbmcCkzk5h4ZYGOtk14A==}
 
-  '@types/lodash@4.14.197':
-    resolution: {integrity: sha512-BMVOiWs0uNxHVlHBgzTIqJYmj+PgCo4euloGF+5m4okL3rEYzM2EEv78mw8zWSMM57dM7kVIgJ2QDvwHSoCI5g==}
+  '@types/lodash@4.17.0':
+    resolution: {integrity: sha512-t7dhREVv6dbNj0q17X12j7yDG4bD/DHYX7o5/DbDxobP0HnGPgpRz2Ej77aL7TZT3DSw13fqUTj8J4mMnqa7WA==}
 
   '@types/parse-json@4.0.0':
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==}
@@ -3979,9 +3982,9 @@ snapshots:
 
   '@types/lodash.mergewith@4.6.7':
     dependencies:
-      '@types/lodash': 4.14.197
+      '@types/lodash': 4.17.0
 
-  '@types/lodash@4.14.197': {}
+  '@types/lodash@4.17.0': {}
 
   '@types/parse-json@4.0.0': {}
 
