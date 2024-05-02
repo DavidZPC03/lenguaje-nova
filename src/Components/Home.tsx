@@ -11,7 +11,7 @@ export default function Home() {
   }
 
   const [value, setValue] = useState('');
-  const [tokens, setTokens] = useState<{ [key: string]: string }[]>();
+  const [tokens, setTokens] = useState<Token[]>();
 
   const onChange = useCallback(
     debounce((val: string) => {
