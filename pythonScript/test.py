@@ -9,7 +9,7 @@ class lexer:
 
     def tokenize(self):
         patterns = [
-            (r"[0-9]+", "NUMBER"),
+            (r"[0-9]+", "CNNUM"),
             (r"case", "CASE"),
             (r"switch", "SWITCH"),
             (r"break", "BREAK"),
@@ -78,5 +78,3 @@ text = "case x = 5; switch x { case 5: break; default: break; } catch (e) { if (
 lx = lexer(text)
 lx.tokenize()
 tokens = lx.get_tokens()
-
-

@@ -4,6 +4,7 @@ import ReactCodeMirror from '@uiw/react-codemirror';
 import { debounce } from 'lodash';
 import { FormEvent, useCallback, useState } from 'react';
 import { FiUpload } from 'react-icons/fi';
+import { tokenizeCode } from '../services/api';
 
 export default function Home() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -14,20 +15,11 @@ export default function Home() {
   const [tokens, setTokens] = useState<Token[]>();
 
   const onChange = useCallback(
-    debounce((val: string) => {
+    debounce(async (val: string) => {
       setValue(val);
 
-      fetch('http://127.0.0.1:5000/tokenize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code: val }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setTokens(data);
-        });
+      const tokens = await tokenizeCode(val);
+      setTokens(tokens);
     }, 300),
     [setValue]
   );
