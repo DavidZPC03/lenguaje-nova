@@ -2,6 +2,7 @@ import { Box, Button, Flex, IconButton, Text } from '@chakra-ui/react';
 import ReactCodeMirror from '@uiw/react-codemirror';
 import { FormEvent, useCallback, useState } from 'react';
 import { FiUpload } from 'react-icons/fi';
+import { javascript } from '@codemirror/lang-javascript';
 
 const exampleTokens = `[
   ('case', 'CASE'),
@@ -121,13 +122,15 @@ export default function Home() {
                 icon={<FiUpload />}
               />
             </Flex>
-            <ReactCodeMirror
-              value={value}
-              height='200px'
-              onChange={onChange}
-              theme={'dark'}
-            />
-
+            <Box mt={2} fontSize={'18px'}>
+              <ReactCodeMirror
+                extensions={[javascript({ jsx: true })]}
+                value={value}
+                height='600px'
+                onChange={onChange}
+                theme={'dark'}
+              />
+            </Box>
             <Flex gap={4}>
               <Button type='submit' mt={4} colorScheme='blue' width={'100%'}>
                 Guardar archivo
