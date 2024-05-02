@@ -20,7 +20,7 @@ function App() {
 
         <Routes>
           <Route path='/' element={<Home />} />
-          <Route path='/diagrama' element={<></>} />
+          <Route path='/diagrama' element={<>Diagrama</>} />
         </Routes>
       </Container>
     </AnimatePresence>

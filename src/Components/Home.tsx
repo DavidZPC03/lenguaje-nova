@@ -1,10 +1,9 @@
 import { Box, Button, Flex, IconButton, List, ListItem, Text } from '@chakra-ui/react';
-import ReactCodeMirror from '@uiw/react-codemirror';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { FiUpload } from 'react-icons/fi';
 import { javascript } from '@codemirror/lang-javascript';
-import { Token, createLexer } from '../class/Lexer';
+import ReactCodeMirror from '@uiw/react-codemirror';
 import { debounce } from 'lodash';
+import { FormEvent, useCallback, useState } from 'react';
+import { FiUpload } from 'react-icons/fi';
 
 export default function Home() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -12,7 +11,7 @@ export default function Home() {
   }
 
   const [value, setValue] = useState('');
-  const [tokens, setTokens] = useState<Token[]>();
+  const [tokens, setTokens] = useState<{ [key: string]: string }[]>();
 
   const onChange = useCallback(
     debounce((val: string) => {
@@ -29,7 +28,7 @@ export default function Home() {
         .then((data) => {
           setTokens(data);
         });
-    }, 300), // 300ms debounce time
+    }, 300),
     [setValue]
   );
 
@@ -63,10 +62,6 @@ export default function Home() {
                 colorScheme='blue'
                 width={'100%'}
                 onClick={() => {
-                  const lexer = createLexer(value);
-                  lexer.tokenize();
-
-                  const tokens = lexer.getTokens();
                   setTokens(tokens);
                 }}
               >
@@ -78,7 +73,7 @@ export default function Home() {
         <Box flex={0.5}>
           <Text>Tokens</Text>
           <Box
-            h={64}
+            h={'600px'}
             borderWidth={1}
             borderRadius={8}
             overflow={'auto'}

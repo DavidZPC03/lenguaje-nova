@@ -66,6 +66,7 @@ class lexer:
             (r"\+\+", "INCREMENT"),
             (r"--", "DECREMENT"),
             (r"===", "STRICT_EQUALS"),
+            (r"\n", "BREAKLINE"),
         ]
 
         combined_patterns = "|".join(f"({pattern})" for pattern, _ in patterns)
