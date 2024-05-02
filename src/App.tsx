@@ -1,4 +1,4 @@
-import { Container, Divider, Heading, Text } from '@chakra-ui/react';
+import { Container, Divider, Flex, Heading, Image, Text } from '@chakra-ui/react';
 import { AnimatePresence } from 'framer-motion';
 import { Route, Routes } from 'react-router';
 import { Link } from 'react-router-dom';
@@ -7,10 +7,13 @@ import Home from './Components/Home';
 function App() {
   return (
     <AnimatePresence mode='wait'>
-      <Container maxW={'7xl'} py={8}>
-        <Heading as={'h1'} size={'xl'} textAlign={'center'} fontFamily={'monospace'}>
-          <Link to={'/'}>Lenguaje de programación NOVA</Link>
-        </Heading>
+      <Container maxW={'7xl'} mt={2}>
+        <Flex alignItems={'center'} textAlign={'center'} justifyContent={'center'}>
+          <Image src='logo.png' alt='Logo' boxSize={36} />
+          <Heading as={'h1'} size={'3xl'} textAlign={'center'} color={'blue.400'}>
+            <Link to={'/'}>NOVA</Link>
+          </Heading>
+        </Flex>
         <Text mt={4} fontWeight={'bold'} fontSize={'lg'}>
           Creado por:
         </Text>
