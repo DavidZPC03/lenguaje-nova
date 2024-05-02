@@ -1,10 +1,11 @@
-import { Box, Button, Flex, IconButton, List, ListItem, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton, Text } from '@chakra-ui/react';
 import ReactCodeMirror from '@uiw/react-codemirror';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useState } from 'react';
 import { FiUpload } from 'react-icons/fi';
 import { javascript } from '@codemirror/lang-javascript';
-import { Token, createLexer } from '../class/Lexer';
+import { createLexer } from '../class/Lexer';
 import { debounce } from 'lodash';
+import TokenDisplay from './TokenDisplay'; // Importamos el nuevo componente
 
 export default function Home() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -12,12 +13,11 @@ export default function Home() {
   }
 
   const [value, setValue] = useState('');
-  const [tokens, setTokens] = useState<Token[]>();
+  const [tokens, setTokens] = useState([]);
 
   const onChange = useCallback(
     debounce((val: string) => {
       setValue(val);
-
       fetch('http://127.0.0.1:5000/tokenize', {
         method: 'POST',
         headers: {
@@ -29,7 +29,7 @@ export default function Home() {
         .then((data) => {
           setTokens(data);
         });
-    }, 300), // 300ms debounce time
+    }, 300),
     [setValue]
   );
 
@@ -65,9 +65,7 @@ export default function Home() {
                 onClick={() => {
                   const lexer = createLexer(value);
                   lexer.tokenize();
-
-                  const tokens = lexer.getTokens();
-                  setTokens(tokens);
+                  setTokens(lexer.getTokens());
                 }}
               >
                 Confirmar
@@ -75,26 +73,7 @@ export default function Home() {
             </Flex>
           </form>
         </Box>
-        <Box flex={0.5}>
-          <Text>Tokens</Text>
-          <Box
-            h={64}
-            borderWidth={1}
-            borderRadius={8}
-            overflow={'auto'}
-            px={4}
-            p={2}
-            mt={6}
-          >
-            <List spacing={3}>
-              {tokens?.map((token, index) => (
-                <ListItem key={index}>
-                  <Text as='b'>{token[0]}</Text>: <Text as='i'>{token[1]}</Text>
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </Box>
+        <TokenDisplay tokens={tokens} /> {/* Utilizamos el componente TokenDisplay */}
       </Flex>
     </>
   );
