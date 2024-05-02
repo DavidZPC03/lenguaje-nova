@@ -1,4 +1,4 @@
-import { Container, Divider, Flex, Heading, Image, Text } from '@chakra-ui/react';
+import { Container, Divider, Flex, Heading, Image } from '@chakra-ui/react';
 import { AnimatePresence } from 'framer-motion';
 import { Route, Routes } from 'react-router';
 import { Link } from 'react-router-dom';
@@ -15,14 +15,8 @@ function App() {
             <Link to={'/'}>NOVA</Link>
           </Heading>
         </Flex>
-        <Text mt={4} fontWeight={'bold'} fontSize={'lg'}>
-          Creado por:
-        </Text>
-        <Text>David Perez Compean - 21100266</Text>
-        <Text>Esdras Daniel Amaya Vela - 21100155</Text>
-        <Text>Alexis Sanmiguel Torres - 21100288</Text>
 
-        <Divider mt={4} mb={4} />
+        <Divider mb={6} />
 
         <Routes>
           <Route path='/' element={<Home />} />
