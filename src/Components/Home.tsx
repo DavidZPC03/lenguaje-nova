@@ -1,5 +1,6 @@
-import { Box, Button, Flex, IconButton, Input, Text } from '@chakra-ui/react';
-import { FormEvent } from 'react';
+import { Box, Button, Flex, IconButton, Text } from '@chakra-ui/react';
+import ReactCodeMirror from '@uiw/react-codemirror';
+import { FormEvent, useCallback, useState } from 'react';
 import { FiUpload } from 'react-icons/fi';
 
 const exampleTokens = `[
@@ -13,7 +14,6 @@ const exampleTokens = `[
   (';', 'SEMICOLON'),
   (' ', 'WHITESPACE'),
   ('switch', 'SWITCH'),
-  
   (' ', 'WHITESPACE'),
   ('x', 'IDENTIFIER'),
   (' ', 'WHITESPACE'),
@@ -101,6 +101,12 @@ export default function Home() {
     e.preventDefault();
   }
 
+  const [value, setValue] = useState("console.log('hello world!');");
+
+  const onChange = useCallback((val: string) => {
+    setValue(val);
+  }, []);
+
   return (
     <>
       <Flex justifyContent={'space-between'} alignItems={'flex-start'} gap={8}>
@@ -115,15 +121,13 @@ export default function Home() {
                 icon={<FiUpload />}
               />
             </Flex>
-            <Input
-              px={4}
-              p={2}
-              mt={2}
-              h={64}
-              placeholder='Escribe tu código aquí...'
-              rows={20}
-              as={'textarea'}
+            <ReactCodeMirror
+              value={value}
+              height='200px'
+              onChange={onChange}
+              theme={'dark'}
             />
+
             <Flex gap={4}>
               <Button type='submit' mt={4} colorScheme='blue' width={'100%'}>
                 Guardar archivo
@@ -142,7 +146,7 @@ export default function Home() {
             p={2}
             mt={6}
           >
-            <Text>{exampleTokens}</Text>
+            <Text>{value}</Text>
           </Box>
         </Box>
       </Flex>
