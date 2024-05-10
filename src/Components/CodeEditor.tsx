@@ -4,8 +4,8 @@ import ReactCodeMirror from '@uiw/react-codemirror';
 import { FiUpload } from 'react-icons/fi';
 
 interface Props {
-  code: string;
   handleCodeChange: (code: string) => void;
+  code: string;
 }
 
 export function CodeEditor({ code, handleCodeChange }: Props) {
@@ -23,7 +23,15 @@ export function CodeEditor({ code, handleCodeChange }: Props) {
             icon={<FiUpload />}
           />
         </Flex>
-        <Box mt={2} fontSize={'18px'}>
+        <Box
+          mt={2}
+          fontSize={'18px'}
+          border='1px solid'
+          rounded='md'
+          borderColor={'#4b4d58'}
+          boxShadow={'md'}
+          p={2}
+        >
           <ReactCodeMirror
             extensions={[javascript({ jsx: true })]}
             value={code}

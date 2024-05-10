@@ -4,8 +4,8 @@ import { useCallback, useState } from 'react';
 import { tokenizeCode } from '../services/api';
 import { CodeEditor } from './CodeEditor';
 import { Errors } from './Errors';
-import { Tokens } from './Tokens';
 import { IdentifierTable } from './IdentifierTable';
+import { Tokens } from './Tokens';
 
 export default function Home() {
   const [code, setCode] = useState('');
@@ -27,7 +27,8 @@ export default function Home() {
         <CodeEditor code={code} handleCodeChange={handleCodeChange} />
         <Tokens tokens={tokens} />
       </Flex>
-      <Flex justifyContent={'space-between'} gap={8}>
+
+      <Flex justifyContent={'space-between'} gap={8} mt={6}>
         <IdentifierTable />
         <Errors />
       </Flex>

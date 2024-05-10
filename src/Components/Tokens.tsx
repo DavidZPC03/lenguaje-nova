@@ -22,7 +22,15 @@ export function Tokens({ tokens }: TokenDisplayProps) {
             icon={<FiUpload />}
           />
         </Flex>
-        <Box mt={2} fontSize={'18px'}>
+        <Box
+          mt={2}
+          fontSize={'18px'}
+          border='1px solid'
+          rounded='md'
+          borderColor={'#4b4d58'}
+          boxShadow={'md'}
+          p={2}
+        >
           <ReactCodeMirror
             extensions={[javascript({ jsx: true })]}
             value={tokens?.map((token) => `${token[0]}: ${token[1]}`).join('\n') ?? ''}
