@@ -55,7 +55,7 @@ export default function Home() {
             </Flex>
           </form>
         </Box>
-        <TokenDisplay tokens={tokens} /> {/* Utilizamos el componente TokenDisplay */}
+        <TokenDisplay tokens={tokens} />
       </Flex>
     </>
   );
