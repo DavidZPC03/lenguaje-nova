@@ -1,6 +1,12 @@
 import { Box, Flex, Heading } from '@chakra-ui/react';
 
-export function IdentifierTable() {
+interface Props {
+  identificadores: unknown[];
+}
+
+export function IdentifierTable({ identificadores }: Props) {
+  console.log(identificadores);
+
   return (
     <Box flex={0.5}>
       <Flex justifyContent={'space-between'} alignItems={'center'}>

@@ -10,13 +10,18 @@ import { Tokens } from './Tokens';
 export default function Home() {
   const [code, setCode] = useState('');
   const [tokens, setTokens] = useState([]);
+  const [errores, setErrores] = useState([]);
+  const [identificadores, setIdentificadores] = useState([]);
 
   const handleCodeChange = useCallback(
     debounce(async (val: string) => {
       setCode(val);
 
-      const tokens = await tokenizeCode(val);
+      const { tokens, errores, identificadores } = await tokenizeCode(val);
+
       setTokens(tokens);
+      setErrores(errores);
+      setIdentificadores(identificadores);
     }, 300),
     [setCode]
   );
@@ -29,8 +34,8 @@ export default function Home() {
       </Flex>
 
       <Flex justifyContent={'space-between'} gap={8} mt={6}>
-        <IdentifierTable />
-        <Errors />
+        <IdentifierTable identificadores={identificadores} />
+        <Errors errores={errores} />
       </Flex>
     </>
   );

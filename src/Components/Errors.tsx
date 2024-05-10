@@ -1,6 +1,12 @@
 import { Box, Flex, Heading } from '@chakra-ui/react';
 
-export function Errors() {
+interface Props {
+  errores: unknown[];
+}
+
+export function Errors({ errores }: Props) {
+  console.log(errores);
+
   return (
     <Box flex={0.5}>
       <Flex justifyContent={'space-between'} alignItems={'center'}>

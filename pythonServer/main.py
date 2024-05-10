@@ -89,7 +89,7 @@ def tokenize():
     lex = lexer(text)
     lex.tokenize()
     tokens = lex.get_tokens()
-    return jsonify(tokens)
+    return jsonify({"tokens": tokens, "errores": [], "identificadores": []})
 
 
 if __name__ == "__main__":
