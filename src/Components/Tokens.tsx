@@ -1,26 +1,23 @@
 import React from 'react';
-import { Box, Flex, Heading, Text, VStack } from '@chakra-ui/react';
+import { Box, Flex, Heading, Text, VStack, Button } from '@chakra-ui/react';
 
 interface TokenDisplayProps {
   tokens: { type: string; indent: number }[];
 }
 
 export function Tokens({ tokens }: TokenDisplayProps) {
-  // Crear una representación visual de cada línea de tokens
   let currentIndent = 0;
   let lines = [];
   let currentLine = [];
 
   tokens.forEach(token => {
     if (token.indent > currentIndent) {
-      // Iniciar una nueva línea con mayor indentación
       if (currentLine.length > 0) {
         lines.push({ tokens: currentLine, indent: currentIndent });
         currentLine = [];
       }
       currentIndent = token.indent;
     } else if (token.indent < currentIndent) {
-      // Finalizar la línea actual y ajustar la indentación
       if (currentLine.length > 0) {
         lines.push({ tokens: currentLine, indent: currentIndent });
         currentLine = [];
@@ -30,10 +27,21 @@ export function Tokens({ tokens }: TokenDisplayProps) {
     currentLine.push(token.type);
   });
 
-  // Asegurarse de agregar la última línea
   if (currentLine.length > 0) {
     lines.push({ tokens: currentLine, indent: currentIndent });
   }
+
+  const downloadTokens = () => {
+    const tokenText = lines.map(line => ' '.repeat(line.indent * 2) + line.tokens.join(' ')).join('\n');
+    const blob = new Blob([tokenText], { type: 'text/plain' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = "tokens.txt";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <>
@@ -42,6 +50,7 @@ export function Tokens({ tokens }: TokenDisplayProps) {
           <Heading fontSize={'2xl'} fontWeight={'semibold'}>
             Tokens
           </Heading>
+          <Button onClick={downloadTokens} colorScheme="blue">Download Tokens</Button>
         </Flex>
         <VStack align="start" spacing={4} mt={2} fontSize={'18px'} border='1px solid' rounded='md' borderColor={'#4b4d58'} boxShadow={'md'} p={2}>
           {lines.map((line, index) => (
