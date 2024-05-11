@@ -1,10 +1,7 @@
-import { Box, Flex, Heading, IconButton } from '@chakra-ui/react';
-import { javascript } from '@codemirror/lang-javascript';
-import ReactCodeMirror from '@uiw/react-codemirror';
-import { FiUpload } from 'react-icons/fi';
+import { Box, Flex, Heading, Text } from '@chakra-ui/react';
 
 interface TokenDisplayProps {
-  tokens: Token[];
+  tokens: { type: string; indent: number }[];
 }
 
 export function Tokens({ tokens }: TokenDisplayProps) {
@@ -15,29 +12,13 @@ export function Tokens({ tokens }: TokenDisplayProps) {
           <Heading fontSize={'2xl'} fontWeight={'semibold'}>
             Tokens
           </Heading>
-          <IconButton
-            type='submit'
-            colorScheme='gray'
-            aria-label='Cargar archivo'
-            icon={<FiUpload />}
-          />
         </Flex>
-        <Box
-          mt={2}
-          fontSize={'18px'}
-          border='1px solid'
-          rounded='md'
-          borderColor={'#4b4d58'}
-          boxShadow={'md'}
-          p={2}
-        >
-          <ReactCodeMirror
-            extensions={[javascript({ jsx: true })]}
-            value={tokens?.map((token) => `${token[0]}: ${token[1]}`).join('\n') ?? ''}
-            editable={false}
-            height='300px'
-            theme={'dark'}
-          />
+        <Box mt={2} fontSize={'18px'} border='1px solid' rounded='md' borderColor={'#4b4d58'} boxShadow={'md'} p={2}>
+          {tokens.map((token, index) => (
+            <Text key={index} ml={`${token.indent * 8}px`} color="gray.500">
+              {token.type}
+            </Text>
+          ))}
         </Box>
       </Box>
     </>

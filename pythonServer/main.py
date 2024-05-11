@@ -71,11 +71,21 @@ class lexer:
 
         combined_patterns = "|".join(f"({pattern})" for pattern, _ in patterns)
 
-        for match in re.finditer(combined_patterns, self.text):
-            for i, group in enumerate(match.groups()):
-                if group is not None:
-                    self.tokens.append((group, patterns[i][1]))
-                    break
+       # Procesar todo el texto y no solo línea por línea para mantener indentación
+        current_indent = 0
+        for line in self.text.split('\n'):
+            indent = len(line) - len(line.lstrip())
+            if indent > current_indent:
+                self.tokens.append(("INDENT", indent))
+            elif indent < current_indent:
+                self.tokens.append(("DEDENT", indent))
+            current_indent = indent
+
+            for match in re.finditer(combined_patterns, line.strip()):
+                for i, group in enumerate(match.groups()):
+                    if group is not None:
+                        self.tokens.append((patterns[i][1], current_indent))
+                        break
 
     def get_tokens(self):
         return self.tokens
@@ -84,13 +94,11 @@ class lexer:
 @app.route("/tokenize", methods=["POST"])
 def tokenize():
     data = request.get_json()
-
     text = data["code"]
     lex = lexer(text)
     lex.tokenize()
     tokens = lex.get_tokens()
-    return jsonify({"tokens": tokens, "errores": [], "identificadores": []})
-
+    return jsonify({"tokens": [{"type": token[0], "indent": token[1]} for token in tokens]})
 
 if __name__ == "__main__":
     app.run(debug=True)
