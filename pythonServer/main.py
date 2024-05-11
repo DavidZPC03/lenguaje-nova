@@ -1,14 +1,11 @@
 from flask import Flask, request, jsonify
-from ast import pattern
 import re
 from flask_cors import CORS
-
 
 app = Flask(__name__)
 CORS(app)
 
-
-class lexer:
+class Lexer:
     def __init__(self, text):
         self.text = text
         self.tokens = []
@@ -69,33 +66,24 @@ class lexer:
             (r"\n", "BREAKLINE"),
         ]
 
-        combined_patterns = "|".join(f"({pattern})" for pattern, _ in patterns)
-
-       # Procesar todo el texto y no solo línea por línea para mantener indentación
-        current_indent = 0
         for line in self.text.split('\n'):
             indent = len(line) - len(line.lstrip())
-            if indent > current_indent:
-                self.tokens.append(("INDENT", indent))
-            elif indent < current_indent:
-                self.tokens.append(("DEDENT", indent))
-            current_indent = indent
-
-            for match in re.finditer(combined_patterns, line.strip()):
+            tokens_in_line = []
+            for match in re.finditer("|".join(f"({pattern})" for pattern, _ in patterns), line.strip()):
                 for i, group in enumerate(match.groups()):
                     if group is not None:
-                        self.tokens.append((patterns[i][1], current_indent))
+                        tokens_in_line.append((patterns[i][1], indent))
                         break
+            self.tokens.extend(tokens_in_line)
 
     def get_tokens(self):
         return self.tokens
-
 
 @app.route("/tokenize", methods=["POST"])
 def tokenize():
     data = request.get_json()
     text = data["code"]
-    lex = lexer(text)
+    lex = Lexer(text)
     lex.tokenize()
     tokens = lex.get_tokens()
     return jsonify({"tokens": [{"type": token[0], "indent": token[1]} for token in tokens]})
