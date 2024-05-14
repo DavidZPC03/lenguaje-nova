@@ -54,7 +54,10 @@ class Lexer:
             (r">=", "ROP>="),
             (r"\n", "BRKLN"),
             (r"//.*", "COMM"),
-            (r'".*"', "STRING"),
+            (r'".*"', "STR"),
+            (r"input", "INP"),
+            (r"output", "OUT"),
+            (r"clear", "CLEAR"),
         ]
 
         line_number = 1  # Contador de líneas
