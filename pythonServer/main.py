@@ -68,8 +68,22 @@ class Lexer:
             ):
                 for i, group in enumerate(match.groups()):
                     if group is not None:
-                        # Agregar el token con su tipo, posición inicial, y nivel de indentación
-                        self.tokens.append((patterns[i][1], match.start(), indent))
+                        token_type = patterns[i][1]
+                        tokens_line.append((token_type, group, line_number))
+                        break
+
+            for i, token in enumerate(tokens_line):
+                if (
+                    token[0] == "IDEN"
+                    and i + 2 < len(tokens_line)
+                    and tokens_line[i + 1][0] == "ASSGN"
+                ):
+                    value_token = tokens_line[i + 2]
+                    if value_token[0] in ["CTNUM", "STR", "IDEN"]:
+                        self.identifier_values[token[1]] = value_token[1]
+
+            self.tokens.extend(tokens_line)
+            line_number += 1
 
     def get_tokens(self):
         return self.tokens
