@@ -5,7 +5,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-
 class Lexer:
     def __init__(self, text):
         self.text = text
@@ -59,22 +58,17 @@ class Lexer:
             (r"output", "OUT"),
             (r"clear", "CLEAR"),
         ]
-
-        line_number = 1  # Contador de líneas
-        for line in self.text.split("\n"):
-            for match in re.finditer(
-                "|".join(f"({pattern})" for pattern, _ in patterns), line
-            ):
+        
+        for line in self.text.splitlines():
+            indent = len(line) - len(line.lstrip(' '))  # Captura la indentación
+            for match in re.finditer("|".join(f"({pattern})" for pattern, _ in patterns), line):
                 for i, group in enumerate(match.groups()):
                     if group is not None:
-                        # Añadir el número de línea al token
-                        self.tokens.append((patterns[i][1], match.start(), line_number))
-                        break
-            line_number += 1
+                        # Agregar el token con su tipo, posición inicial, y nivel de indentación
+                        self.tokens.append((patterns[i][1], match.start(), indent))
 
     def get_tokens(self):
         return self.tokens
-
 
 @app.route("/tokenize", methods=["POST"])
 def tokenize():
@@ -83,16 +77,7 @@ def tokenize():
     lex = Lexer(text)
     lex.tokenize()
     tokens = lex.get_tokens()
-    # Modificar la salida para incluir el número de línea
-    return jsonify(
-        {
-            "tokens": [
-                {"type": token[0], "position": token[1], "line": token[2]}
-                for token in tokens
-            ]
-        }
-    )
-
+    return jsonify({"tokens": [{"type": token[0], "position": token[1], "indent": token[2]} for token in tokens]})
 
 if __name__ == "__main__":
     app.run(debug=True)

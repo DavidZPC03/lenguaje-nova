@@ -6,10 +6,11 @@ interface TokenDisplayProps {
 }
 
 export function Tokens({ tokens }: TokenDisplayProps) {
-  let currentIndent = 0;
-  let lines = [];
-  let currentLine = [];
+  let currentIndent = 0; // Sigue la indentación actual
+  let lines = []; // Almacena líneas de tokens
+  let currentLine = []; // Almacena los tokens de la línea actual
 
+  // Procesa cada token para organizarlos por líneas según su indentación
   tokens.forEach(token => {
     if (token.indent > currentIndent) {
       if (currentLine.length > 0) {
@@ -27,10 +28,12 @@ export function Tokens({ tokens }: TokenDisplayProps) {
     currentLine.push(token.type);
   });
 
+  // Añade la última línea si hay tokens pendientes
   if (currentLine.length > 0) {
     lines.push({ tokens: currentLine, indent: currentIndent });
   }
 
+  // Función para descargar los tokens como archivo .txt
   const downloadTokens = () => {
     const tokenText = lines.map(line => ' '.repeat(line.indent * 2) + line.tokens.join(' ')).join('\n');
     const blob = new Blob([tokenText], { type: 'text/plain' });
@@ -50,7 +53,9 @@ export function Tokens({ tokens }: TokenDisplayProps) {
           <Heading fontSize={'2xl'} fontWeight={'semibold'}>
             Tokens
           </Heading>
-          <Button onClick={downloadTokens} colorScheme="blue">Download Tokens</Button>
+          <Button onClick={downloadTokens} colorScheme="blue">
+            Download Tokens
+          </Button>
         </Flex>
         <VStack align="start" spacing={4} mt={2} fontSize={'18px'} border='1px solid' rounded='md' borderColor={'#4b4d58'} boxShadow={'md'} p={2}>
           {lines.map((line, index) => (
