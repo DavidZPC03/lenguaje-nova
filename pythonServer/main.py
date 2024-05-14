@@ -86,7 +86,10 @@ class Lexer:
             line_number += 1
 
     def get_tokens(self):
-        return self.tokens
+        return [
+            {"type": token[0], "value": token[1], "line": token[2]}
+            for token in self.tokens
+        ]
 
     def get_identifiers_info(self):
         return [
@@ -112,10 +115,13 @@ def tokenize():
     return jsonify(
         {
             "tokens": [
-                {"type": token[0], "position": token[1], "line": token[2]}
+                {
+                    "type": token["type"],
+                    "value": token["value"],
+                    "line": token["line"],
+                }
                 for token in tokens
             ],
-            #
             "identificadores": identifiers,
         }
     )

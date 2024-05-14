@@ -5,41 +5,23 @@ interface TokenDisplayProps {
     type: string;
     value: string;
     line: number;
+    indent: number;
   }[];
 }
 
 export function Tokens({ tokens }: TokenDisplayProps) {
-  let currentIndent = 0; // Sigue la indentación actual
-  const lines = []; // Almacena líneas de tokens
-  let currentLine = []; // Almacena los tokens de la línea actual
-
-  // Procesa cada token para organizarlos por líneas según su indentación
-  tokens.forEach((token) => {
-    if (token.indent > currentIndent) {
-      if (currentLine.length > 0) {
-        lines.push({ tokens: currentLine, indent: currentIndent });
-        currentLine = [];
-      }
-      currentIndent = token.indent;
-    } else if (token.indent < currentIndent) {
-      if (currentLine.length > 0) {
-        lines.push({ tokens: currentLine, indent: currentIndent });
-        currentLine = [];
-      }
-      currentIndent = token.indent;
-    }
-    currentLine.push(token.type);
-  });
-
-  // Añade la última línea si hay tokens pendientes
-  if (currentLine.length > 0) {
-    lines.push({ tokens: currentLine, indent: currentIndent });
-  }
+  const lines = tokens.reduce((acc, token) => {
+    // Si no existe la línea, inicializa un array vacío para esa línea
+    if (!acc[token.line]) acc[token.line] = [];
+    // Añade el token a la línea correspondiente
+    acc[token.line].push(token.type);
+    return acc;
+  }, {});
 
   // Función para descargar los tokens como archivo .txt
   const downloadTokens = () => {
-    const tokenText = lines
-      .map((line) => ' '.repeat(line.indent * 2) + line.tokens.join(' '))
+    const tokenText = Object.values(lines)
+      .map((lineTokens) => lineTokens.join(' '))
       .join('\n');
     const blob = new Blob([tokenText], { type: 'text/plain' });
     const href = URL.createObjectURL(blob);
@@ -73,9 +55,9 @@ export function Tokens({ tokens }: TokenDisplayProps) {
           boxShadow={'md'}
           p={2}
         >
-          {lines.map((line, index) => (
-            <Text key={index} ml={`${line.indent * 8}px`} color='gray.500'>
-              {line.tokens.join(' ')}
+          {Object.entries(lines).map(([lineNumber, lineTokens], index) => (
+            <Text key={index} color='gray.500'>
+              {lineTokens.join(' ')}
             </Text>
           ))}
         </VStack>
