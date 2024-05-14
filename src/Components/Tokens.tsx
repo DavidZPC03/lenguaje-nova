@@ -1,24 +1,22 @@
-import { Box, Button, Flex, Heading, Text, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, Heading } from '@chakra-ui/react';
+import { javascript } from '@codemirror/lang-javascript';
+import ReactCodeMirror from '@uiw/react-codemirror';
 
 interface TokenDisplayProps {
   tokens: {
     type: string;
     value: string;
     line: number;
-    indent: number;
   }[];
 }
 
 export function Tokens({ tokens }: TokenDisplayProps) {
   const lines = tokens.reduce((acc, token) => {
-    // Si no existe la línea, inicializa un array vacío para esa línea
     if (!acc[token.line]) acc[token.line] = [];
-    // Añade el token a la línea correspondiente
     acc[token.line].push(token.type);
     return acc;
   }, {});
 
-  // Función para descargar los tokens como archivo .txt
   const downloadTokens = () => {
     const tokenText = Object.values(lines)
       .map((lineTokens) => lineTokens.join(' '))
@@ -33,6 +31,10 @@ export function Tokens({ tokens }: TokenDisplayProps) {
     document.body.removeChild(link);
   };
 
+  const tokensDisplay = Object.entries(lines)
+    .map(([lineNumber, lineTokens]) => lineTokens.join(' '))
+    .join('\n');
+
   return (
     <>
       <Box flex={0.5}>
@@ -44,9 +46,7 @@ export function Tokens({ tokens }: TokenDisplayProps) {
             Download Tokens
           </Button>
         </Flex>
-        <VStack
-          align='start'
-          spacing={4}
+        <Box
           mt={2}
           fontSize={'18px'}
           border='1px solid'
@@ -55,12 +55,14 @@ export function Tokens({ tokens }: TokenDisplayProps) {
           boxShadow={'md'}
           p={2}
         >
-          {Object.entries(lines).map(([lineNumber, lineTokens], index) => (
-            <Text key={index} color='gray.500'>
-              {lineTokens.join(' ')}
-            </Text>
-          ))}
-        </VStack>
+          <ReactCodeMirror
+            extensions={[javascript()]}
+            value={tokensDisplay}
+            height='300px'
+            theme='dark'
+            contentEditable={false}
+          />
+        </Box>
       </Box>
     </>
   );
