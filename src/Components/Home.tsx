@@ -22,11 +22,12 @@ export default function Home() {
       setErrores(response.errores);
 
       // Filtrar y transformar identificadores para que se ajusten al componente IdentifierTable
-      const filteredIdentifiers = response.tokens.filter(token => token.type === 'IDENTIFIER')
-        .map(token => ({
-          name: token.type,  // Esta debería ser una propiedad más descriptiva del token, si disponible
+      const filteredIdentifiers = response.tokens
+        .filter((token) => token.type === 'IDEN')
+        .map((token) => ({
+          name: token.type, // Esta debería ser una propiedad más descriptiva del token, si disponible
           type: token.type,
-          value: `Línea ${token.line}`  // Asumiendo que quieres mostrar la línea como 'valor'
+          value: `Línea ${token.line}`, // Asumiendo que quieres mostrar la línea como 'valor'
         }));
       setIdentificadores(filteredIdentifiers);
     }, 300),
