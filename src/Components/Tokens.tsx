@@ -9,10 +9,11 @@ interface TokenDisplayProps {
 }
 
 export function Tokens({ tokens }: TokenDisplayProps) {
-  let currentIndent = 0;
-  const lines = [];
-  let currentLine = [];
+  let currentIndent = 0; // Sigue la indentación actual
+  const lines = []; // Almacena líneas de tokens
+  let currentLine = []; // Almacena los tokens de la línea actual
 
+  // Procesa cada token para organizarlos por líneas según su indentación
   tokens.forEach((token) => {
     if (token.indent > currentIndent) {
       if (currentLine.length > 0) {
@@ -30,10 +31,12 @@ export function Tokens({ tokens }: TokenDisplayProps) {
     currentLine.push(token.type);
   });
 
+  // Añade la última línea si hay tokens pendientes
   if (currentLine.length > 0) {
     lines.push({ tokens: currentLine, indent: currentIndent });
   }
 
+  // Función para descargar los tokens como archivo .txt
   const downloadTokens = () => {
     const tokenText = lines
       .map((line) => ' '.repeat(line.indent * 2) + line.tokens.join(' '))
