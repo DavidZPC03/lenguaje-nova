@@ -1,9 +1,10 @@
 import { Box, Flex, Heading, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/react';
 
 interface Identifier {
-  name: string;  // Nombre del identificador
-  type: string;  // Tipo del identificador
-  value: any;    // Valor asignado al identificador
+  type: string;
+  name: string;
+  value: number;
+  line: string;
 }
 
 interface IdentifierProps {
@@ -11,10 +12,9 @@ interface IdentifierProps {
 }
 
 export function IdentifierTable({ identificadores }: IdentifierProps) {
-  // Verificación para asegurarnos de que hay identificadores antes de intentar renderizarlos
   if (!identificadores || identificadores.length === 0) {
     return (
-      <Box flex={0.5} overflowX="auto">
+      <Box flex={0.5} overflowX='auto'>
         <Flex justifyContent={'space-between'} alignItems={'center'} mb={4}>
           <Heading fontSize={'2xl'} fontWeight={'semibold'}>
             Tabla de Símbolos
@@ -26,18 +26,19 @@ export function IdentifierTable({ identificadores }: IdentifierProps) {
   }
 
   return (
-    <Box flex={0.5} overflowX="auto">
+    <Box flex={0.5} overflowX='auto'>
       <Flex justifyContent={'space-between'} alignItems={'center'} mb={4}>
         <Heading fontSize={'2xl'} fontWeight={'semibold'}>
           Tabla de Símbolos
         </Heading>
       </Flex>
-      <Table variant="simple">
+      <Table variant='simple'>
         <Thead>
           <Tr>
             <Th>Nombre</Th>
             <Th>Tipo</Th>
             <Th>Valor</Th>
+            <Th>Línea</Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -45,7 +46,8 @@ export function IdentifierTable({ identificadores }: IdentifierProps) {
             <Tr key={index}>
               <Td>{id.name}</Td>
               <Td>{id.type}</Td>
-              <Td>{JSON.stringify(id.value)}</Td>
+              <Td>{id.value}</Td>
+              <Td>{id.line}</Td>
             </Tr>
           ))}
         </Tbody>

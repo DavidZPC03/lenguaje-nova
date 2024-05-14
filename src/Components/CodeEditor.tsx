@@ -1,8 +1,8 @@
-import React from 'react';
-import { Box, Flex, Heading, IconButton, Button, useToast } from '@chakra-ui/react';
+import { Box, Flex, Heading, IconButton, useToast } from '@chakra-ui/react';
 import { javascript } from '@codemirror/lang-javascript';
 import ReactCodeMirror from '@uiw/react-codemirror';
-import { FiUpload, FiDownload } from 'react-icons/fi';
+import React from 'react';
+import { FiDownload, FiUpload } from 'react-icons/fi';
 
 interface Props {
   handleCodeChange: (code: string) => void;
@@ -34,9 +34,9 @@ export function CodeEditor({ code, handleCodeChange }: Props) {
       reader.readAsText(file);
     } else {
       toast({
-        title: "Error",
-        description: "No file was selected.",
-        status: "error",
+        title: 'Error',
+        description: 'No file was selected.',
+        status: 'error',
         duration: 5000,
         isClosable: true,
       });
@@ -45,22 +45,22 @@ export function CodeEditor({ code, handleCodeChange }: Props) {
 
   return (
     <Box flex={0.5}>
-      <form onSubmit={e => e.preventDefault()}>
+      <form onSubmit={(e) => e.preventDefault()}>
         <Flex justifyContent={'space-between'} alignItems={'center'}>
           <Heading fontSize={'2xl'} fontWeight={'semibold'}>
             Código
           </Heading>
           <Flex>
             <input
-              type="file"
-              id="fileInput"
+              type='file'
+              id='fileInput'
               style={{ display: 'none' }}
               onChange={handleFileUpload}
-              accept=".txt"
+              accept='.txt'
             />
-            <label htmlFor="fileInput">
+            <label htmlFor='fileInput'>
               <IconButton
-                as="span"
+                as='span'
                 colorScheme='gray'
                 aria-label='Cargar archivo'
                 icon={<FiUpload />}
