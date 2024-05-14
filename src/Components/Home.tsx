@@ -1,3 +1,4 @@
+// Componente Home
 import { Flex } from '@chakra-ui/react';
 import { debounce } from 'lodash';
 import { useCallback, useState } from 'react';
@@ -16,12 +17,18 @@ export default function Home() {
   const handleCodeChange = useCallback(
     debounce(async (val: string) => {
       setCode(val);
+      const response = await tokenizeCode(val);
+      setTokens(response.tokens);
+      setErrores(response.errores);
 
-      const { tokens, errores, identificadores } = await tokenizeCode(val);
-
-      setTokens(tokens);
-      setErrores(errores);
-      setIdentificadores(identificadores);
+      // Filtrar y transformar identificadores para que se ajusten al componente IdentifierTable
+      const filteredIdentifiers = response.tokens.filter(token => token.type === 'IDENTIFIER')
+        .map(token => ({
+          name: token.type,  // Esta debería ser una propiedad más descriptiva del token, si disponible
+          type: token.type,
+          value: `Línea ${token.line}`  // Asumiendo que quieres mostrar la línea como 'valor'
+        }));
+      setIdentificadores(filteredIdentifiers);
     }, 300),
     [setCode]
   );

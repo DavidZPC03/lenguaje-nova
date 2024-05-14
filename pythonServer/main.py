@@ -66,15 +66,15 @@ class Lexer:
             (r"\n", "BREAKLINE"),
         ]
 
+        line_number = 1  # Contador de líneas
         for line in self.text.split('\n'):
-            indent = len(line) - len(line.lstrip())
-            tokens_in_line = []
-            for match in re.finditer("|".join(f"({pattern})" for pattern, _ in patterns), line.strip()):
+            for match in re.finditer("|".join(f"({pattern})" for pattern, _ in patterns), line):
                 for i, group in enumerate(match.groups()):
                     if group is not None:
-                        tokens_in_line.append((patterns[i][1], indent))
+                        # Añadir el número de línea al token
+                        self.tokens.append((patterns[i][1], match.start(), line_number))
                         break
-            self.tokens.extend(tokens_in_line)
+            line_number += 1
 
     def get_tokens(self):
         return self.tokens
@@ -86,7 +86,8 @@ def tokenize():
     lex = Lexer(text)
     lex.tokenize()
     tokens = lex.get_tokens()
-    return jsonify({"tokens": [{"type": token[0], "indent": token[1]} for token in tokens]})
+    # Modificar la salida para incluir el número de línea
+    return jsonify({"tokens": [{"type": token[0], "position": token[1], "line": token[2]} for token in tokens]})
 
 if __name__ == "__main__":
     app.run(debug=True)
