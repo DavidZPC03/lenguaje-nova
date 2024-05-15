@@ -8,6 +8,12 @@ patterns = [
     (r"switch", "SWTCH"),
     (r"break", "BRK"),
     (r"try", "TRY"),
+    (r"input", "INP"),
+    (r"output", "OUT"),
+    (r"clear", "CLEAR"),
+    (r"int", "TPINT"),
+    (r"string", "TPSTR"),
+    (r"double", "TPDBL"),
     (r"catch", "CTCH"),
     (r"if", "IF"),
     (r"else", "ELSE"),
@@ -30,7 +36,6 @@ patterns = [
     (r"[+]", "AOP+"),
     (r"[-]", "AOP-"),
     (r"[*]", "AOP*"),
-    (r"[/]", "AOP/"),
     (r"[<]", "ROP<"),
     (r"[>]", "ROP>"),
     (r"[!]", "LOP!"),
@@ -44,9 +49,6 @@ patterns = [
     (r"\n", "BRKLN"),
     (r"//.*", "COMM"),
     (r'".*"', "STR"),
-    (r"input", "INP"),
-    (r"output", "OUT"),
-    (r"clear", "CLEAR"),
 ]
 
 app = Flask(__name__)
@@ -61,6 +63,7 @@ class Lexer:
 
     def tokenize(self):
         line_number = 1
+        last_token_type = None  # Almacena el último tipo de token encontrado
         for line in self.text.split("\n"):
             tokens_line = []
             for match in re.finditer(
@@ -70,17 +73,33 @@ class Lexer:
                     if group is not None:
                         token_type = patterns[i][1]
                         tokens_line.append((token_type, group, line_number))
+                        # Captura el tipo de dato si el token actual es de tipo
+                        if token_type in ["TPINT", "TPSTR", "TPDBL"]:
+                            last_token_type = group  # Almacena el tipo de dato como el último tipo encontrado
                         break
 
             for i, token in enumerate(tokens_line):
-                if (
-                    token[0] == "IDEN"
-                    and i + 2 < len(tokens_line)
-                    and tokens_line[i + 1][0] == "ASSGN"
-                ):
-                    value_token = tokens_line[i + 2]
-                    if value_token[0] in ["CTNUM", "STR", "IDEN"]:
-                        self.identifier_values[token[1]] = value_token[1]
+                if token[0] == "IDEN":
+                    # Si el token anterior es un tipo de dato, almacena el tipo y el valor (si está presente)
+                    if last_token_type:
+                        self.identifier_values[token[1]] = {
+                            "type": last_token_type,
+                            "value": None,
+                        }
+                        last_token_type = None  # Restablece el último tipo de dato
+                    # Captura el valor si el siguiente token es un asignador
+                    if i + 2 < len(tokens_line) and tokens_line[i + 1][0] == "ASSGN":
+                        value_token = tokens_line[i + 2]
+                        if value_token[0] in ["CTNUM", "STR", "IDEN"]:
+                            if token[1] in self.identifier_values:
+                                self.identifier_values[token[1]]["value"] = value_token[
+                                    1
+                                ]
+                            else:
+                                self.identifier_values[token[1]] = {
+                                    "type": None,
+                                    "value": value_token[1],
+                                }
 
             self.tokens.extend(tokens_line)
             line_number += 1
@@ -92,16 +111,19 @@ class Lexer:
         ]
 
     def get_identifiers_info(self):
-        return [
-            {
-                "line": token[2],
-                "type": token[0],
-                "name": token[1],
-                "value": self.identifier_values.get(token[1], None),
-            }
-            for token in self.tokens
-            if token[0] == "IDEN"
-        ]
+        last_identifiers = {}
+        for token in self.tokens:
+            if token[0] == "IDEN" and token[1] in self.identifier_values:
+                identifier_info = self.identifier_values[token[1]]
+                # Actualiza la información del identificador con la línea actual del token
+                identifier_info["line"] = token[2]
+                last_identifiers[token[1]] = {
+                    "line": identifier_info["line"],
+                    "type": identifier_info["type"],
+                    "name": token[1],
+                    "value": identifier_info["value"],
+                }
+        return list(last_identifiers.values())
 
 
 @app.route("/tokenize", methods=["POST"])
