@@ -32,7 +32,7 @@ export function Tokens({ tokens }: TokenDisplayProps) {
   };
 
   const tokensDisplay = Object.entries(lines)
-    .map(([lineNumber, lineTokens]) => lineTokens.join(' '))
+    .map(([lineNumber, lineTokens]) => `${lineNumber}: ${lineTokens.join(' ')}`)
     .join('\n');
 
   return (
@@ -61,6 +61,9 @@ export function Tokens({ tokens }: TokenDisplayProps) {
             height='300px'
             theme='dark'
             contentEditable={false}
+            basicSetup={{
+              lineNumbers: false,
+            }}
           />
         </Box>
       </Box>

@@ -17,7 +17,7 @@ export function CodeEditor({ code, handleCodeChange }: Props) {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'code.txt');
+    link.setAttribute('download', 'code.nova');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
