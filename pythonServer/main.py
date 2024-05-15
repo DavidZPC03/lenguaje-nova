@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import re
 from flask_cors import CORS
+from error_handler import detect_errors  # Asegúrate de que este import es correcto
 
 patterns = [
     (r"[0-9]+", "CTNUM"),
@@ -134,20 +135,17 @@ def tokenize():
     lex.tokenize()
     tokens = lex.get_tokens()
     identifiers = lex.get_identifiers_info()
+
+    # Análisis de errores basado en los tokens generados
+    errors = detect_errors(tokens)
+
     return jsonify(
         {
-            "tokens": [
-                {
-                    "type": token["type"],
-                    "value": token["value"],
-                    "line": token["line"],
-                }
-                for token in tokens
-            ],
             "identificadores": identifiers,
+            "tokens": tokens,
+            "errores": errors
         }
     )
-
 
 if __name__ == "__main__":
     app.run(debug=True)
