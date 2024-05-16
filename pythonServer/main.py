@@ -24,7 +24,8 @@ patterns = [
     (r"continue", "CNTN"),
     (r"return", "RTRN"),
     (r"function", "FCTN"),
-    (r"[a-zA-Z_][a-zA-Z0-9_]*", "IDEN"),
+    # identificadores que empiecen con gion bajo
+    (r"[_][a-zA-Z_][a-zA-Z0-9_]*", "IDEN"),
     (r"[;]", "CH;"),
     (r"[,]", "CH,"),
     (r"[.]", "CH."),

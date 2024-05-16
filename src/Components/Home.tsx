@@ -28,7 +28,7 @@ export default function Home() {
 
   return (
     <>
-      <Flex justifyContent={'space-between'} gap={8}>
+      <Flex justifyContent={'space-between'} gap={4}>
         <CodeEditor code={code} handleCodeChange={handleCodeChange} />
         <Tokens tokens={tokens} />
       </Flex>

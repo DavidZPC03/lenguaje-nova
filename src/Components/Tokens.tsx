@@ -43,7 +43,7 @@ export function Tokens({ tokens }: TokenDisplayProps) {
             Tokens
           </Heading>
           <Button onClick={downloadTokens} colorScheme='blue'>
-            Download Tokens
+            Descargar tokens
           </Button>
         </Flex>
         <Box
