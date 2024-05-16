@@ -3,8 +3,9 @@ import re
 from flask_cors import CORS
 
 patterns = [
-    (r"[0-9]+\.[0-9]+", "NUMDB"),
-    (r"[0-9]+", "NUMINT"),
+    # NUMDB +
+    (r"[\+\-]?[0-9]+\.[0-9]+", "NUMDB"),
+    (r"[\+\-]?[0-9]+", "NUMINT"),
     (r"case", "CASE"),
     (r"switch", "SWTCH"),
     (r"break", "BRK"),
