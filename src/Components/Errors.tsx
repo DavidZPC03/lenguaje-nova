@@ -23,7 +23,6 @@ export function Errors({ errores }: Props) {
           <Thead>
             <Tr>
               <Th>Línea</Th>
-              <Th>Tipo de Error</Th>
               <Th>Mensaje de Error</Th>
             </Tr>
           </Thead>
@@ -31,7 +30,6 @@ export function Errors({ errores }: Props) {
             {errores.map((error, index) => (
               <Tr key={index}>
                 <Td>{error.line}</Td>
-                <Td>{error.type}</Td>
                 <Td>{error.message}</Td>
               </Tr>
             ))}

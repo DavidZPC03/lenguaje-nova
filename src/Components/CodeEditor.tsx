@@ -56,7 +56,7 @@ export function CodeEditor({ code, handleCodeChange }: Props) {
               id='fileInput'
               style={{ display: 'none' }}
               onChange={handleFileUpload}
-              accept='.txt'
+              accept='.nova'
             />
             <label htmlFor='fileInput'>
               <IconButton

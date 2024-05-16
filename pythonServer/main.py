@@ -96,8 +96,8 @@ class Lexer:
                     if unrecognized_text:
                         self.errors.append({
                             'line': line_number,
-                            'type': 'SYNTAX_ERROR',
-                            'message': f"Texto no reconocido: {unrecognized_text}"
+                            'type': 'ERROR',
+                            'message': f"Token o identificador inesperado: {unrecognized_text}"
                         })
                 last_end = end
                 for i, group in enumerate(match.groups()):
