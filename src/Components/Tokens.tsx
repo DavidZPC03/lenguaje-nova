@@ -61,6 +61,7 @@ export function Tokens({ tokens }: TokenDisplayProps) {
             height='300px'
             theme='dark'
             contentEditable={false}
+            readOnly={true}
             basicSetup={{
               lineNumbers: false,
             }}

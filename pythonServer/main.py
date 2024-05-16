@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
 import re
 from flask_cors import CORS
-from error_handler import detect_errors  # Asegúrate de que este import es correcto
 
 patterns = [
-    (r"[0-9]+", "CTNUM"),
+    (r"[0-9]+\.[0-9]+", "NUMDB"),
+    (r"[0-9]+", "NUMINT"),
     (r"case", "CASE"),
     (r"switch", "SWTCH"),
     (r"break", "BRK"),
@@ -62,6 +62,8 @@ class Lexer:
         self.text = text
         self.tokens = []
         self.identifier_values = {}
+        self.identifier_counter = 1  # Inicializa el contador de identificadores
+        self.identifier_map = {}  # Mapea identificadores a su ID único
 
     def tokenize(self):
         line_number = 1
@@ -74,14 +76,21 @@ class Lexer:
                 for i, group in enumerate(match.groups()):
                     if group is not None:
                         token_type = patterns[i][1]
+                        # Modifica el tipo de token para identificadores únicos
+                        if token_type == "IDEN":
+                            if group not in self.identifier_map:
+                                # Asigna un ID único al identificador y actualiza el contador
+                                self.identifier_map[group] = self.identifier_counter
+                                self.identifier_counter += 1
+                            token_type = f"IDEN{self.identifier_map[group]}"
                         tokens_line.append((token_type, group, line_number))
                         # Captura el tipo de dato si el token actual es de tipo
-                        if token_type in ["TPINT", "TPSTR", "TPDBL"]:
+                        if token_type.startswith("TP"):
                             last_token_type = group  # Almacena el tipo de dato como el último tipo encontrado
                         break
 
             for i, token in enumerate(tokens_line):
-                if token[0] == "IDEN":
+                if token[0].startswith("IDEN"):
                     # Si el token anterior es un tipo de dato, almacena el tipo y el valor (si está presente)
                     if last_token_type:
                         self.identifier_values[token[1]] = {
@@ -92,7 +101,7 @@ class Lexer:
                     # Captura el valor si el siguiente token es un asignador
                     if i + 2 < len(tokens_line) and tokens_line[i + 1][0] == "ASSGN":
                         value_token = tokens_line[i + 2]
-                        if value_token[0] in ["CTNUM", "STR", "IDEN"]:
+                        if value_token[0] in ["NUMINT", "STR", "IDEN", "NUMDB"]:
                             if token[1] in self.identifier_values:
                                 self.identifier_values[token[1]]["value"] = value_token[
                                     1
@@ -115,7 +124,7 @@ class Lexer:
     def get_identifiers_info(self):
         last_identifiers = {}
         for token in self.tokens:
-            if token[0] == "IDEN" and token[1] in self.identifier_values:
+            if token[0].startswith("IDEN") and token[1] in self.identifier_values:
                 identifier_info = self.identifier_values[token[1]]
                 # Actualiza la información del identificador con la línea actual del token
                 identifier_info["line"] = token[2]
@@ -137,16 +146,8 @@ def tokenize():
     tokens = lex.get_tokens()
     identifiers = lex.get_identifiers_info()
 
-    # Análisis de errores basado en los tokens generados
-    errors = detect_errors(tokens)
+    return jsonify({"identificadores": identifiers, "tokens": tokens, "errores": []})
 
-    return jsonify(
-        {
-            "identificadores": identifiers,
-            "tokens": tokens,
-            "errores": errors
-        }
-    )
 
 if __name__ == "__main__":
     app.run(debug=True)
