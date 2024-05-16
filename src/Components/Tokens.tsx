@@ -8,9 +8,14 @@ interface TokenDisplayProps {
     value: string;
     line: number;
   }[];
+  errores: {
+    line: number;
+    type: string;
+    message: string;
+  }[];
 }
 
-export function Tokens({ tokens }: TokenDisplayProps) {
+export function Tokens({ tokens, errores }: TokenDisplayProps) {
   const lines = tokens.reduce((acc, token) => {
     if (!acc[token.line]) acc[token.line] = [];
     acc[token.line].push(token.type);
@@ -18,6 +23,11 @@ export function Tokens({ tokens }: TokenDisplayProps) {
   }, {});
 
   const downloadTokens = () => {
+    if (errores.length > 0) {
+      alert('No puedes descargar los tokens debido a errores en el código.');
+      return;
+    }
+
     const tokenText = Object.values(lines)
       .map((lineTokens) => lineTokens.join(' '))
       .join('\n');
@@ -42,7 +52,7 @@ export function Tokens({ tokens }: TokenDisplayProps) {
           <Heading fontSize={'2xl'} fontWeight={'semibold'}>
             Tokens
           </Heading>
-          <Button onClick={downloadTokens} colorScheme='blue'>
+          <Button onClick={downloadTokens} colorScheme='blue' isDisabled={errores.length > 0}>
             Descargar tokens
           </Button>
         </Flex>

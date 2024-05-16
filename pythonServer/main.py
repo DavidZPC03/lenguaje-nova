@@ -3,31 +3,29 @@ import re
 from flask_cors import CORS
 
 patterns = [
-    # NUMDB +
     (r"[\+\-]?[0-9]+\.[0-9]+", "NUMDB"),
     (r"[\+\-]?[0-9]+", "NUMINT"),
-    (r"case", "CASE"),
-    (r"switch", "SWTCH"),
-    (r"break", "BRK"),
-    (r"try", "TRY"),
-    (r"input", "INP"),
-    (r"output", "OUT"),
-    (r"clear", "CLEAR"),
-    (r"int", "TPINT"),
-    (r"string", "TPSTR"),
-    (r"double", "TPDBL"),
-    (r"catch", "CTCH"),
-    (r"if", "IF"),
-    (r"else", "ELSE"),
-    (r"elseif", "ELIF"),
-    (r"for", "FOR"),
-    (r"while", "WHI"),
-    (r"do", "DO"),
-    (r"continue", "CNTN"),
-    (r"return", "RTRN"),
-    (r"function", "FCTN"),
-    # identificadores que empiecen con gion bajo
-    (r"[_][a-zA-Z_][a-zA-Z0-9_]*", "IDEN"),
+    (r"\bcase\b", "CASE"),
+    (r"\bswitch\b", "SWTCH"),
+    (r"\bbreak\b", "BRK"),
+    (r"\btry\b", "TRY"),
+    (r"\binput\b", "INP"),
+    (r"\boutput\b", "OUT"),
+    (r"\bclear\b", "CLEAR"),
+    (r"\bint\b", "TPINT"),
+    (r"\bstring\b", "TPSTR"),
+    (r"\bdouble\b", "TPDBL"),
+    (r"\bcatch\b", "CTCH"),
+    (r"\bif\b", "IF"),
+    (r"\belse\b", "ELSE"),
+    (r"\belseif\b", "ELIF"),
+    (r"\bfor\b", "FOR"),
+    (r"\bwhile\b", "WHI"),
+    (r"\bdo\b", "DO"),
+    (r"\bcontinue\b", "CNTN"),
+    (r"\breturn\b", "RTRN"),
+    (r"\bfunction\b", "FCTN"),
+    (r"\b[_][a-zA-Z_][a-zA-Z0-9_]*\b", "IDEN"),
     (r"[;]", "CH;"),
     (r"[,]", "CH,"),
     (r"[.]", "CH."),
@@ -57,85 +55,159 @@ patterns = [
 app = Flask(__name__)
 CORS(app)
 
+error_messages = {
+    'INVALID_IDEN': "Identificador no válido",
+    'INVALID_KEYWORD': "Palabra reservada no válida",
+    'INVALID_NUMINT': "Constante numérica entera no válida",
+    'INVALID_NUMDB': "Constante numérica flotante no válida",
+    'INVALID_NUMEXP': "Constante numérica con exponente no válida",
+    'INVALID_OPERATOR': "Operadores aritméticos no válidos",
+    'INVALID_STRING': "Cadena no válida",
+    'INVALID_COMMENT': "Comentario no válido",
+    'SYNTAX_ERROR': "Error de sintaxis"
+}
+
+valid_keywords = {
+    'CASE', 'SWTCH', 'BRK', 'TRY', 'INP', 'OUT', 'CLEAR', 
+    'TPINT', 'TPSTR', 'TPDBL', 'CTCH', 'IF', 'ELSE', 'ELIF', 
+    'FOR', 'WHI', 'DO', 'CNTN', 'RTRN', 'FCTN'
+}
 
 class Lexer:
     def __init__(self, text):
         self.text = text
         self.tokens = []
+        self.errors = []
         self.identifier_values = {}
-        self.identifier_counter = 1  # Inicializa el contador de identificadores
-        self.identifier_map = {}  # Mapea identificadores a su ID único
+        self.identifier_counter = 1
+        self.identifier_map = {}
 
     def tokenize(self):
         line_number = 1
-        last_token_type = None  # Almacena el último tipo de token encontrado
+        last_token_type = None
         for line in self.text.split("\n"):
             tokens_line = []
-            for match in re.finditer(
-                "|".join(f"({pattern})" for pattern, _ in patterns), line
-            ):
+            last_end = 0
+            for match in re.finditer("|".join(f"({pattern})" for pattern, _ in patterns), line):
+                start, end = match.span()
+                if start > last_end:
+                    # Capturar errores no reconocidos
+                    unrecognized_text = line[last_end:start].strip()
+                    if unrecognized_text:
+                        self.errors.append({
+                            'line': line_number,
+                            'type': 'SYNTAX_ERROR',
+                            'message': f"Texto no reconocido: {unrecognized_text}"
+                        })
+                last_end = end
                 for i, group in enumerate(match.groups()):
                     if group is not None:
                         token_type = patterns[i][1]
-                        # Modifica el tipo de token para identificadores únicos
                         if token_type == "IDEN":
                             if group not in self.identifier_map:
-                                # Asigna un ID único al identificador y actualiza el contador
                                 self.identifier_map[group] = self.identifier_counter
                                 self.identifier_counter += 1
                             token_type = f"IDEN{self.identifier_map[group]}"
-                        tokens_line.append((token_type, group, line_number))
-                        # Captura el tipo de dato si el token actual es de tipo
+                        tokens_line.append({"type": token_type, "value": group, "line": line_number})
                         if token_type.startswith("TP"):
-                            last_token_type = group  # Almacena el tipo de dato como el último tipo encontrado
+                            last_token_type = group
                         break
 
+            # Detectar cualquier texto no reconocido después del último token
+            if last_end < len(line):
+                unrecognized_text = line[last_end:].strip()
+                if unrecognized_text:
+                    self.errors.append({
+                        'line': line_number,
+                        'type': 'SYNTAX_ERROR',
+                        'message': f"Texto no reconocido: {unrecognized_text}"
+                    })
+
             for i, token in enumerate(tokens_line):
-                if token[0].startswith("IDEN"):
-                    # Si el token anterior es un tipo de dato, almacena el tipo y el valor (si está presente)
+                if token["type"].startswith("IDEN"):
                     if last_token_type:
-                        self.identifier_values[token[1]] = {
+                        self.identifier_values[token["value"]] = {
                             "type": last_token_type,
                             "value": None,
                         }
-                        last_token_type = None  # Restablece el último tipo de dato
-                    # Captura el valor si el siguiente token es un asignador
-                    if i + 2 < len(tokens_line) and tokens_line[i + 1][0] == "ASSGN":
+                        last_token_type = None
+                    if i + 2 < len(tokens_line) and tokens_line[i + 1]["type"] == "ASSGN":
                         value_token = tokens_line[i + 2]
-                        if value_token[0] in ["NUMINT", "STR", "IDEN", "NUMDB"]:
-                            if token[1] in self.identifier_values:
-                                self.identifier_values[token[1]]["value"] = value_token[
-                                    1
-                                ]
+                        if value_token["type"] in ["NUMINT", "STR", "IDEN", "NUMDB"]:
+                            if token["value"] in self.identifier_values:
+                                self.identifier_values[token["value"]]["value"] = value_token["value"]
                             else:
-                                self.identifier_values[token[1]] = {
+                                self.identifier_values[token["value"]] = {
                                     "type": None,
-                                    "value": value_token[1],
+                                    "value": value_token["value"],
                                 }
 
             self.tokens.extend(tokens_line)
             line_number += 1
 
     def get_tokens(self):
-        return [
-            {"type": token[0], "value": token[1], "line": token[2]}
-            for token in self.tokens
-        ]
+        return self.tokens
 
     def get_identifiers_info(self):
         last_identifiers = {}
         for token in self.tokens:
-            if token[0].startswith("IDEN") and token[1] in self.identifier_values:
-                identifier_info = self.identifier_values[token[1]]
-                # Actualiza la información del identificador con la línea actual del token
-                identifier_info["line"] = token[2]
-                last_identifiers[token[1]] = {
+            if token["type"].startswith("IDEN") and token["value"] in self.identifier_values:
+                identifier_info = self.identifier_values[token["value"]]
+                identifier_info["line"] = token["line"]
+                last_identifiers[token["value"]] = {
                     "line": identifier_info["line"],
                     "type": identifier_info["type"],
-                    "name": token[1],
+                    "name": token["value"],
                     "value": identifier_info["value"],
                 }
         return list(last_identifiers.values())
+
+    def detect_errors(self):
+        for token in self.tokens:
+            if token['type'].startswith('IDEN') and not token['value'].startswith('_'):
+                self.errors.append({
+                    'line': token['line'],
+                    'type': 'INVALID_IDEN',
+                    'message': error_messages['INVALID_IDEN']
+                })
+            elif token['type'] not in valid_keywords and not token['type'].startswith('IDEN'):
+                if re.match(r'^[a-zA-Z_]\w*$', token['value']) and token['value'] not in valid_keywords:
+                    self.errors.append({
+                        'line': token['line'],
+                        'type': 'INVALID_KEYWORD',
+                        'message': error_messages['INVALID_KEYWORD']
+                    })
+            elif token['type'] == 'NUMINT' and re.search(r'[a-zA-Z]', token['value']):
+                self.errors.append({
+                    'line': token['line'],
+                    'type': 'INVALID_NUMINT',
+                    'message': error_messages['INVALID_NUMINT']
+                })
+            elif token['type'] == 'NUMDB' and re.search(r'[a-zA-Z]', token['value']):
+                self.errors.append({
+                    'line': token['line'],
+                    'type': 'INVALID_NUMDB',
+                    'message': error_messages['INVALID_NUMDB']
+                })
+            elif token['type'].startswith('AOP') and re.search(r'[^\+\-\*/]', token['value']):
+                self.errors.append({
+                    'line': token['line'],
+                    'type': 'INVALID_OPERATOR',
+                    'message': error_messages['INVALID_OPERATOR']
+                })
+            elif token['type'] == 'STR' and re.search(r'\b(case|switch|break|try|input|output|clear|int|string|double|catch|if|else|elseif|for|while|do|continue|return|function)\b', token['value']):
+                self.errors.append({
+                    'line': token['line'],
+                    'type': 'INVALID_STRING',
+                    'message': error_messages['INVALID_STRING']
+                })
+            elif token['type'] == 'COMM' and not re.match(r'//.*', token['value']):
+                self.errors.append({
+                    'line': token['line'],
+                    'type': 'INVALID_COMMENT',
+                    'message': error_messages['INVALID_COMMENT']
+                })
+        return self.errors
 
 
 @app.route("/tokenize", methods=["POST"])
@@ -146,8 +218,9 @@ def tokenize():
     lex.tokenize()
     tokens = lex.get_tokens()
     identifiers = lex.get_identifiers_info()
-
-    return jsonify({"identificadores": identifiers, "tokens": tokens, "errores": []})
+    errors = lex.detect_errors()
+    print("Errors detected: ", errors)
+    return jsonify({"identificadores": identifiers, "tokens": tokens, "errores": errors})
 
 
 if __name__ == "__main__":

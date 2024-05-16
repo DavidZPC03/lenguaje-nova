@@ -3,6 +3,7 @@ import { Box, Flex, Heading, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/
 interface Error {
   line: number;
   type: string;
+  message: string;
 }
 
 interface Props {
@@ -10,19 +11,6 @@ interface Props {
 }
 
 export function Errors({ errores }: Props) {
-  const getErrorDescription = (type: string) => {
-    switch (type) {
-      case "1":
-        return "Error de sintaxis";
-      case "2":
-        return "Error de cadena";
-      case "3":
-        return "Error de constante numérica no válida";
-      default:
-        return "Error desconocido";
-    }
-  };
-
   return (
     <Box flex={0.5} overflowX="auto">
       <Flex justifyContent={'space-between'} alignItems={'center'} mb={4}>
@@ -36,13 +24,15 @@ export function Errors({ errores }: Props) {
             <Tr>
               <Th>Línea</Th>
               <Th>Tipo de Error</Th>
+              <Th>Mensaje de Error</Th>
             </Tr>
           </Thead>
           <Tbody>
             {errores.map((error, index) => (
               <Tr key={index}>
                 <Td>{error.line}</Td>
-                <Td>{getErrorDescription(error.type)}</Td>
+                <Td>{error.type}</Td>
+                <Td>{error.message}</Td>
               </Tr>
             ))}
           </Tbody>

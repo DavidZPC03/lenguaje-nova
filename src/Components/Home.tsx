@@ -30,7 +30,7 @@ export default function Home() {
     <>
       <Flex justifyContent={'space-between'} gap={4}>
         <CodeEditor code={code} handleCodeChange={handleCodeChange} />
-        <Tokens tokens={tokens} />
+        <Tokens tokens={tokens} errores={errores} />
       </Flex>
 
       <Flex justifyContent={'space-between'} gap={8} mt={6}>
