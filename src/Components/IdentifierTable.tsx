@@ -1,4 +1,5 @@
-import { Box, Flex, Heading, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/react';
+import { Box, Flex, Heading, Table, Thead, Tbody, Tr, Th, Td, IconButton } from '@chakra-ui/react';
+import { FiDownload, FiUpload } from 'react-icons/fi';
 
 interface Identifier {
   type: string;
@@ -31,6 +32,22 @@ export function IdentifierTable({ identificadores }: IdentifierProps) {
         <Heading fontSize={'2xl'} fontWeight={'semibold'}>
           Tabla de Símbolos
         </Heading>
+        <IconButton aria-label='Descargar tabla de símbolos' icon={<FiDownload />} colorScheme='blue'  
+          onClick={() => {
+        const identificadoresJson = JSON.stringify(identificadores, null, 2);
+        const blob = new Blob([identificadoresJson], { type: 'application/json' });
+        const href = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        if(identificadores.length === 0)
+          alert('No hay identificadores para descargar');
+        else{
+        link.href = href;
+        link.download = 'identificadores.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+          }}}        
+        />
       </Flex>
       <Table variant='simple'>
         <Thead>
