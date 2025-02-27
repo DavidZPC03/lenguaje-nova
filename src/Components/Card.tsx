@@ -6,7 +6,7 @@ export function Card() {
 
   return (
     <Box>
-      <Button onClick={onOpen}>Mostrar carta</Button>
+
 
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />

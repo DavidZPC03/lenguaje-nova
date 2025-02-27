@@ -2,6 +2,7 @@ import { Box, Button, Flex, Heading, IconButton} from '@chakra-ui/react';
 import { FiDownload, FiUpload } from 'react-icons/fi';
 import { javascript } from '@codemirror/lang-javascript';
 import ReactCodeMirror from '@uiw/react-codemirror';
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, useDisclosure } from '@chakra-ui/react';
 
 
 interface TokenDisplayProps {
@@ -25,6 +26,7 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
     return acc;
   }, {});
 
+  const { onOpen } = useDisclosure();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -95,6 +97,7 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
                 mr={2}
               />
             </label>
+            <Button onClick={onOpen}>Mostrar carta</Button>
           </Box>
 
         </Flex>
