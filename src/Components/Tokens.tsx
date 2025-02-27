@@ -16,6 +16,8 @@ interface TokenDisplayProps {
     type: string;
     message: string;
   }[];
+  //Card
+  handleCodeChange: (code: string) => void;
 }
 
 
@@ -26,7 +28,7 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
     return acc;
   }, {});
 
-  const { onOpen } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -123,6 +125,27 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
           />
         </Box>
       </Box>
+
+            {/* Modal para la carta */}
+            <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent 
+       bg="rgba(0, 0, 0, 0.8)" // Fondo transparente
+       color="white" // Color del texto
+       borderRadius="md" // Bordes redondeados
+        maxW="800px" // Cambia este valor para hacerla más ancha
+        width="90%" // Para que se ajuste mejor en pantallas pequeñas
+        >
+          <ModalHeader>Carta Informativa</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <p>Este es el contenido de la carta con fondo transparente.</p>
+            <Button onClick={onClose} colorScheme='red' mt={4}>
+              Cerrar
+            </Button>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </>
   );
 }
