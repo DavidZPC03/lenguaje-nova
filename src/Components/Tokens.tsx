@@ -1,9 +1,8 @@
-import { Box, Button, Flex, Heading, IconButton} from '@chakra-ui/react';
+import { Box, Button, Flex, Heading, IconButton, Text } from '@chakra-ui/react';
 import { FiDownload, FiUpload } from 'react-icons/fi';
 import { javascript } from '@codemirror/lang-javascript';
 import ReactCodeMirror from '@uiw/react-codemirror';
 import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, useDisclosure } from '@chakra-ui/react';
-
 
 interface TokenDisplayProps {
   tokens: {
@@ -16,15 +15,17 @@ interface TokenDisplayProps {
     type: string;
     message: string;
   }[];
-  //Card
+  syntaxResults?: {
+    line: number;
+    valid: boolean;
+  }[];
   handleCodeChange: (code: string) => void;
 }
 
-
-export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps) {
-  const lines = tokens.reduce((acc, token) => {
+export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }: TokenDisplayProps) {
+  const lines = tokens.reduce((acc: { [key: number]: Array<{type: string, value: string}> }, token) => {
     if (!acc[token.line]) acc[token.line] = [];
-    acc[token.line].push(token.type);
+    acc[token.line].push({type: token.type, value: token.value});
     return acc;
   }, {});
 
@@ -39,16 +40,9 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
         handleCodeChange(text?.toString() || '');
       };
       reader.readAsText(file);
-    } else {
-      toast({
-        title: 'Error',
-        description: 'No file was selected.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
     }
   };
+
   const downloadTokens = () => {
     if (errores.length > 0) {
       alert('No puedes descargar los tokens debido a errores en el código.');
@@ -56,7 +50,7 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
     }
 
     const tokenText = Object.values(lines)
-      .map((lineTokens) => lineTokens.join(' '))
+      .map((lineTokens) => lineTokens.map(t => `${t.value} -> ${t.type}`).join(', '))
       .join('\n');
     const blob = new Blob([tokenText], { type: 'text/plain' });
     const href = URL.createObjectURL(blob);
@@ -68,22 +62,18 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
     document.body.removeChild(link);
   };
 
-  const tokensDisplay = Object.entries(lines)
-    .map(([lineNumber, lineTokens]) => `${lineNumber}: ${lineTokens.join(' ')}`)
-    .join('\n');
-
   return (
     <>
-      <Box flex={0.5} >
+      <Box flex={0.5}>
         <Flex justifyContent={'space-between'} alignItems={'center'}>
           <Heading fontSize={'2xl'} fontWeight={'semibold'}>
             Tokens
           </Heading>
-          <Box flex={0.5} textAlign={'right'}> 
-          <Button onClick={downloadTokens} colorScheme='blue' isDisabled={errores.length > 0}>
-            Descargar tokens
-          </Button>
-          <input
+          <Box flex={0.5} textAlign={'right'}>
+            <Button onClick={downloadTokens} colorScheme='blue' isDisabled={errores.length > 0}>
+              Descargar tokens
+            </Button>
+            <input
               type='file'
               id='fileInput'
               style={{ display: 'none' }}
@@ -101,7 +91,6 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
             </label>
             <Button onClick={onOpen}>Mostrar carta</Button>
           </Box>
-
         </Flex>
         <Box
           mt={2}
@@ -114,7 +103,11 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
         >
           <ReactCodeMirror
             extensions={[javascript()]}
-            value={tokensDisplay}
+            value={Object.entries(lines)
+              .map(([lineNumber, lineTokens]) => 
+                `linea#${lineNumber}: ${lineTokens.map(t => `${t.value} -> ${t.type}`).join(', ')}`
+              )
+              .join('\n')}
             height='300px'
             theme='dark'
             contentEditable={false}
@@ -126,21 +119,48 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
         </Box>
       </Box>
 
-            {/* Modal para la carta */}
-            <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
         <ModalContent 
-       bg="rgba(0, 0, 0, 0.8)" // Fondo transparente
-       color="white" // Color del texto
-       borderRadius="md" // Bordes redondeados
-        maxW="800px" // Cambia este valor para hacerla más ancha
-        width="90%" // Para que se ajuste mejor en pantallas pequeñas
+          bg="rgba(0, 0, 0, 0.9)"
+          color="white"
+          borderRadius="md"
+          maxW="800px"
+          width="90%"
         >
-          <ModalHeader>Carta Informativa</ModalHeader>
+          <ModalHeader>Análisis Sintáctico</ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
-            <p>Este es el contenido de la carta con fondo transparente.</p>
-            <Button onClick={onClose} colorScheme='red' mt={4}>
+          <ModalBody pb={6}>
+            {Object.entries(lines)
+              .sort(([a], [b]) => parseInt(a) - parseInt(b))
+              .map(([lineNumber, lineTokens]) => {
+                const line = parseInt(lineNumber);
+                const isValid = syntaxResults.find(r => r.line === line)?.valid;
+                
+                return (
+                  <Box key={line} fontFamily="monospace" mb={3}>
+                    <Text color="gray.300">
+                      linea#{line}:{" "}
+                      {lineTokens
+                        .map(t => `${t.value} -> ${t.type}`)
+                        .join(", ")}
+                    </Text>
+                    {isValid ? (
+                      <Text color="green.400">s</Text>
+                    ) : (
+                      <Text color="red.400">
+                        // Error sintáctico en línea {line}
+                      </Text>
+                    )}
+                  </Box>
+                );
+              })}
+            <Button 
+              onClick={onClose} 
+              colorScheme="red" 
+              mt={4}
+              width="full"
+            >
               Cerrar
             </Button>
           </ModalBody>
@@ -149,7 +169,3 @@ export function Tokens({ tokens, errores, handleCodeChange }: TokenDisplayProps)
     </>
   );
 }
-function toast(arg0: { title: string; description: string; status: string; duration: number; isClosable: boolean; }) {
-  throw new Error('Function not implemented.');
-}
-

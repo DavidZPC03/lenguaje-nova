@@ -91,7 +91,6 @@ class Lexer:
             for match in re.finditer("|".join(f"({pattern})" for pattern, _ in patterns), line):
                 start, end = match.span()
                 if start > last_end:
-                    # Capturar errores no reconocidos
                     unrecognized_text = line[last_end:start].strip()
                     if unrecognized_text:
                         self.errors.append({
@@ -113,7 +112,6 @@ class Lexer:
                             last_token_type = group
                         break
 
-            # Detectar cualquier texto no reconocido después del último token
             if last_end < len(line):
                 unrecognized_text = line[last_end:].strip()
                 if unrecognized_text:
@@ -209,6 +207,27 @@ class Lexer:
                 })
         return self.errors
 
+    def check_syntax(self):
+        syntax_results = []
+        lines = {}
+        for token in self.tokens:
+            line_num = token['line']
+            if line_num not in lines:
+                lines[line_num] = []
+            lines[line_num].append(token['type'])
+        
+        for line_num in sorted(lines.keys()):
+            tokens_in_line = lines[line_num]
+            is_valid = self.parse_line(tokens_in_line)
+            syntax_results.append({'line': line_num, 'valid': is_valid})
+        
+        return syntax_results
+
+    def parse_line(self, tokens):
+        if not tokens:
+            return True
+        last_token = tokens[-1]
+        return last_token in ['CH;', 'CH}']
 
 @app.route("/tokenize", methods=["POST"])
 def tokenize():
@@ -219,9 +238,13 @@ def tokenize():
     tokens = lex.get_tokens()
     identifiers = lex.get_identifiers_info()
     errors = lex.detect_errors()
-    print("Errors detected: ", errors)
-    return jsonify({"identificadores": identifiers, "tokens": tokens, "errores": errors})
-
+    syntax_results = lex.check_syntax()
+    return jsonify({
+        "identificadores": identifiers,
+        "tokens": tokens,
+        "errores": errors,
+        "syntaxResults": syntax_results
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)
