@@ -18,14 +18,15 @@ interface TokenDisplayProps {
   syntaxResults?: {
     line: number;
     valid: boolean;
+    message?: string;
   }[];
   handleCodeChange: (code: string) => void;
 }
 
 export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }: TokenDisplayProps) {
-  const lines = tokens.reduce((acc: { [key: number]: Array<{type: string, value: string}> }, token) => {
+  const lines = tokens.reduce((acc: { [key: number]: Array<{ type: string, value: string }> }, token) => {
     if (!acc[token.line]) acc[token.line] = [];
-    acc[token.line].push({type: token.type, value: token.value});
+    acc[token.line].push({ type: token.type, value: token.value });
     return acc;
   }, {});
 
@@ -56,7 +57,7 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
     const href = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = href;
-    link.download = 'tokens.txt';
+    link.download = 'tokens.nova';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -104,7 +105,7 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
           <ReactCodeMirror
             extensions={[javascript()]}
             value={Object.entries(lines)
-              .map(([lineNumber, lineTokens]) => 
+              .map(([lineNumber, lineTokens]) =>
                 `linea#${lineNumber}: ${lineTokens.map(t => `${t.value} -> ${t.type}`).join(', ')}`
               )
               .join('\n')}
@@ -121,7 +122,7 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
 
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
-        <ModalContent 
+        <ModalContent
           bg="rgba(0, 0, 0, 0.9)"
           color="white"
           borderRadius="md"
@@ -135,29 +136,28 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
               .sort(([a], [b]) => parseInt(a) - parseInt(b))
               .map(([lineNumber, lineTokens]) => {
                 const line = parseInt(lineNumber);
-                const isValid = syntaxResults.find(r => r.line === line)?.valid;
-                
+                const syntaxResult = syntaxResults.find(r => r.line === line);
+                const isValid = syntaxResult?.valid ?? false;
+                const errorMessage = syntaxResult?.message || 'Error sintáctico';
+
                 return (
                   <Box key={line} fontFamily="monospace" mb={3}>
                     <Text color="gray.300">
-                      linea#{line}:{" "}
-                      {lineTokens
-                        .map(t => `${t.value} -> ${t.type}`)
-                        .join(", ")}
+                      linea#{line}: {lineTokens.map(t => `${t.value} -> ${t.type}`).join(', ')}
                     </Text>
                     {isValid ? (
-                      <Text color="green.400">s</Text>
+                      <Text color="green.400">S → (estructura válida)</Text>
                     ) : (
                       <Text color="red.400">
-                        // Error sintáctico en línea {line}
+                       {errorMessage}
                       </Text>
                     )}
                   </Box>
                 );
               })}
-            <Button 
-              onClick={onClose} 
-              colorScheme="red" 
+            <Button
+              onClick={onClose}
+              colorScheme="red"
               mt={4}
               width="full"
             >

@@ -209,25 +209,63 @@ class Lexer:
 
     def check_syntax(self):
         syntax_results = []
-        lines = {}
-        for token in self.tokens:
-            line_num = token['line']
-            if line_num not in lines:
-                lines[line_num] = []
-            lines[line_num].append(token['type'])
+        current_line = 1
+        current_tokens = []
         
-        for line_num in sorted(lines.keys()):
-            tokens_in_line = lines[line_num]
-            is_valid = self.parse_line(tokens_in_line)
-            syntax_results.append({'line': line_num, 'valid': is_valid})
+        for token in self.tokens + [{'type': 'EOF', 'value': '', 'line': None}]:
+            if token['line'] == current_line:
+                current_tokens.append(token['type'])
+            else:
+                is_valid, message = self.parse_line(current_tokens, current_line)
+                syntax_results.append({
+                    'line': current_line,
+                    'valid': is_valid,
+                    'message': message if not is_valid else ''
+                })
+                current_line = token.get('line', current_line + 1)
+                current_tokens = [token['type']] if token['type'] != 'EOF' else []
         
         return syntax_results
 
-    def parse_line(self, tokens):
+    def parse_line(self, tokens, line_number):
         if not tokens:
-            return True
-        last_token = tokens[-1]
-        return last_token in ['CH;', 'CH}']
+            return True, ''
+        
+        # Gramática simplificada para pruebas
+        grammar = {
+            'DECLARACION': [['TPINT', 'IDEN'], ['TPSTR', 'IDEN'], ['TPDBL', 'IDEN']],
+            'ASIGNACION': [['IDEN', 'ASSGN', 'VALOR']],
+            'VALOR': [['IDEN'], ['NUMINT'], ['NUMDB'], ['STR']],
+            'IF': [['IF', 'CH(', 'CONDICION', 'CH)', 'CH{', 'INSTRUCCION', 'CH}']],
+            'CONDICION': [['IDEN', 'OPERADOR_R', 'VALOR']],
+            'OPERADOR_R': [['ROP=='], ['ROP!='], ['ROP>'], ['ROP<'], ['ROP>='], ['ROP<=']],
+            'INSTRUCCION': [['DECLARACION'], ['ASIGNACION'], ['IF']]
+        }
+
+        try:
+            stack = []
+            for token in tokens:
+                stack.append(token)
+                while True:
+                    reduced = False
+                    for lhs, productions in grammar.items():
+                        for rhs in productions:
+                            if stack[-len(rhs):] == rhs:
+                                stack = stack[:-len(rhs)] + [lhs]
+                                reduced = True
+                                break
+                        if reduced:
+                            break
+                    if not reduced:
+                        break
+
+            if stack == ['INSTRUCCION'] or stack == ['DECLARACION'] or stack == ['ASIGNACION']:
+                return True, ''
+            else:
+                return False, f"Error sintáctico en línea {line_number}: Estructura no válida"
+                
+        except Exception as e:
+            return False, f"Error en análisis de línea {line_number}: {str(e)}"
 
 @app.route("/tokenize", methods=["POST"])
 def tokenize():
@@ -239,11 +277,18 @@ def tokenize():
     identifiers = lex.get_identifiers_info()
     errors = lex.detect_errors()
     syntax_results = lex.check_syntax()
+    
+    # Combinar errores léxicos y sintácticos
+    combined_errors = errors + [
+        {'line': res['line'], 'type': 'SYNTAX_ERROR', 'message': res['message']} 
+        for res in syntax_results if not res['valid']
+    ]
+    
     return jsonify({
         "identificadores": identifiers,
         "tokens": tokens,
-        "errores": errors,
-        "syntaxResults": syntax_results
+        "errores": combined_errors,
+        "syntaxResults": [{'line': res['line'], 'valid': res['valid'], 'message': res['message']} for res in syntax_results]
     })
 
 if __name__ == "__main__":
