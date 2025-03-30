@@ -28,7 +28,7 @@ patterns = [
     (r"\bcontinue\b", "CNTN"),
     (r"\breturn\b", "RTRN"),
     (r"\bfunction\b", "FCTN"),
-    (r"\b[_][a-zA-Z_][a-zA-Z0-9_]*\b", "IDEN"),
+    (r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", "IDEN"),  # Modificado para detectar cualquier identificador
     (r"[;]", "CH;"),
     (r"[,]", "CH,"),
     (r"[.]", "CH."),
