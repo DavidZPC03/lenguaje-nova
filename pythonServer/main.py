@@ -2,9 +2,12 @@ from flask import Flask, request, jsonify
 import re
 from flask_cors import CORS
 
+# Definición de patrones para el lexer
 patterns = [
     (r"[\+\-]?[0-9]+\.[0-9]+", "NUMDB"),
     (r"[\+\-]?[0-9]+", "NUMINT"),
+    (r"\btrue\b", "TRUE"),
+    (r"\bfalse\b", "FALSE"),
     (r"\bcase\b", "CASE"),
     (r"\bswitch\b", "SWTCH"),
     (r"\bbreak\b", "BRK"),
@@ -55,8 +58,9 @@ patterns = [
 app = Flask(__name__)
 CORS(app)
 
+# Mensajes de error
 error_messages = {
-    'INVALID_IDEN': "Identificador no válido",
+    'INVALID_IDEN': "Identificador no válido (debe comenzar con _)",
     'INVALID_KEYWORD': "Palabra reservada no válida",
     'INVALID_NUMINT': "Constante numérica entera no válida",
     'INVALID_NUMDB': "Constante numérica flotante no válida",
@@ -67,12 +71,14 @@ error_messages = {
     'SYNTAX_ERROR': "Error de sintaxis"
 }
 
+# Palabras reservadas válidas
 valid_keywords = {
     'CASE', 'SWTCH', 'BRK', 'TRY', 'INP', 'OUT', 'CLEAR', 
     'TPINT', 'TPSTR', 'TPDBL', 'CTCH', 'IF', 'ELSE', 'ELIF', 
-    'FOR', 'WHI', 'DO', 'CNTN', 'RTRN', 'FCTN'
+    'FOR', 'WHI', 'DO', 'CNTN', 'RTRN', 'FCTN', 'TRUE', 'FALSE'
 }
 
+# Clase Lexer
 class Lexer:
     def __init__(self, text):
         self.text = text
@@ -106,8 +112,14 @@ class Lexer:
                             if group not in self.identifier_map:
                                 self.identifier_map[group] = self.identifier_counter
                                 self.identifier_counter += 1
-                            token_type = f"IDEN{self.identifier_map[group]}"
-                        tokens_line.append({"type": token_type, "value": group, "line": line_number})
+                            tokens_line.append({
+                                "type": "IDEN", 
+                                "id": self.identifier_map[group], 
+                                "value": group, 
+                                "line": line_number
+                            })
+                        else:
+                            tokens_line.append({"type": token_type, "value": group, "line": line_number})
                         if token_type.startswith("TP"):
                             last_token_type = group
                         break
@@ -122,7 +134,7 @@ class Lexer:
                     })
 
             for i, token in enumerate(tokens_line):
-                if token["type"].startswith("IDEN"):
+                if token["type"] == "IDEN":
                     if last_token_type:
                         self.identifier_values[token["value"]] = {
                             "type": last_token_type,
@@ -131,7 +143,7 @@ class Lexer:
                         last_token_type = None
                     if i + 2 < len(tokens_line) and tokens_line[i + 1]["type"] == "ASSGN":
                         value_token = tokens_line[i + 2]
-                        if value_token["type"] in ["NUMINT", "STR", "IDEN", "NUMDB"]:
+                        if value_token["type"] in ["NUMINT", "STR", "IDEN", "NUMDB", "TRUE", "FALSE"]:
                             if token["value"] in self.identifier_values:
                                 self.identifier_values[token["value"]]["value"] = value_token["value"]
                             else:
@@ -149,7 +161,7 @@ class Lexer:
     def get_identifiers_info(self):
         last_identifiers = {}
         for token in self.tokens:
-            if token["type"].startswith("IDEN") and token["value"] in self.identifier_values:
+            if token["type"] == "IDEN" and token["value"] in self.identifier_values:
                 identifier_info = self.identifier_values[token["value"]]
                 identifier_info["line"] = token["line"]
                 last_identifiers[token["value"]] = {
@@ -162,13 +174,13 @@ class Lexer:
 
     def detect_errors(self):
         for token in self.tokens:
-            if token['type'].startswith('IDEN') and not token['value'].startswith('_'):
+            if token['type'] == 'IDEN' and not token['value'].startswith('_'):
                 self.errors.append({
                     'line': token['line'],
                     'type': 'INVALID_IDEN',
                     'message': error_messages['INVALID_IDEN']
                 })
-            elif token['type'] not in valid_keywords and not token['type'].startswith('IDEN'):
+            elif token['type'] not in valid_keywords and not token['type'] == 'IDEN':
                 if re.match(r'^[a-zA-Z_]\w*$', token['value']) and token['value'] not in valid_keywords:
                     self.errors.append({
                         'line': token['line'],
@@ -209,64 +221,72 @@ class Lexer:
 
     def check_syntax(self):
         syntax_results = []
-        current_line = 1
-        current_tokens = []
+        code_lines = self.text.split('\n')
         
-        for token in self.tokens + [{'type': 'EOF', 'value': '', 'line': None}]:
-            if token['line'] == current_line:
-                current_tokens.append(token['type'])
-            else:
-                is_valid, message = self.parse_line(current_tokens, current_line)
-                syntax_results.append({
-                    'line': current_line,
-                    'valid': is_valid,
-                    'message': message if not is_valid else ''
-                })
-                current_line = token.get('line', current_line + 1)
-                current_tokens = [token['type']] if token['type'] != 'EOF' else []
+        for line_number in range(1, len(code_lines) + 1):
+            line_tokens = [token for token in self.tokens if token['line'] == line_number]
+            is_valid, message = self.parse_line(line_tokens, line_number)
+            syntax_results.append({
+                'line': line_number,
+                'valid': is_valid,
+                'message': message
+            })
         
         return syntax_results
 
     def parse_line(self, tokens, line_number):
         if not tokens:
-            return True, ''
-        
-        # Gramática simplificada para pruebas
-        grammar = {
-            'DECLARACION': [['TPINT', 'IDEN'], ['TPSTR', 'IDEN'], ['TPDBL', 'IDEN']],
-            'ASIGNACION': [['IDEN', 'ASSGN', 'VALOR']],
-            'VALOR': [['IDEN'], ['NUMINT'], ['NUMDB'], ['STR']],
-            'IF': [['IF', 'CH(', 'CONDICION', 'CH)', 'CH{', 'INSTRUCCION', 'CH}']],
-            'CONDICION': [['IDEN', 'OPERADOR_R', 'VALOR']],
-            'OPERADOR_R': [['ROP=='], ['ROP!='], ['ROP>'], ['ROP<'], ['ROP>='], ['ROP<=']],
-            'INSTRUCCION': [['DECLARACION'], ['ASIGNACION'], ['IF']]
-        }
+            return True, ''  # Línea vacía es válida
 
+        # Convertir tokens a tipos
+        token_types = [token['type'] for token in tokens]
+
+        # Validación básica de estructuras comunes
         try:
-            stack = []
-            for token in tokens:
-                stack.append(token)
-                while True:
-                    reduced = False
-                    for lhs, productions in grammar.items():
-                        for rhs in productions:
-                            if stack[-len(rhs):] == rhs:
-                                stack = stack[:-len(rhs)] + [lhs]
-                                reduced = True
-                                break
-                        if reduced:
-                            break
-                    if not reduced:
-                        break
+            # Declaración de variable
+            if token_types[0] in ['TPINT', 'TPSTR', 'TPDBL']:
+                if len(token_types) >= 3 and token_types[1] == 'IDEN' and token_types[2] == 'CH;':
+                    return True, ''
+                elif len(token_types) >= 5 and token_types[1] == 'IDEN' and token_types[2] == 'ASSGN' and token_types[4] == 'CH;':
+                    return True, ''
+                else:
+                    return False, 'Error en declaración de variable'
 
-            if stack == ['INSTRUCCION'] or stack == ['DECLARACION'] or stack == ['ASIGNACION']:
+            # Asignación
+            if len(token_types) >= 4 and token_types[0] == 'IDEN' and token_types[1] == 'ASSGN' and token_types[3] == 'CH;':
                 return True, ''
-            else:
-                return False, f"Error sintáctico en línea {line_number}: Estructura no válida"
-                
-        except Exception as e:
-            return False, f"Error en análisis de línea {line_number}: {str(e)}"
 
+            # Estructura if
+            if len(token_types) >= 5 and token_types[0] == 'IF' and token_types[1] == 'CH(' and 'CH)' in token_types and 'CH{' in token_types:
+                return True, ''
+
+            # Estructura while
+            if len(token_types) >= 5 and token_types[0] == 'WHI' and token_types[1] == 'CH(' and 'CH)' in token_types and 'CH{' in token_types:
+                return True, ''
+
+            # Estructura for
+            if (len(token_types) >= 14 and token_types[0] == 'FOR' and token_types[1] == 'CH(' and
+                token_types[2] == 'IDEN' and token_types[3] == 'ASSGN' and token_types[4] == 'NUMINT' and
+                token_types[5] == 'CH;' and token_types[6] == 'IDEN' and token_types[7] == 'ROP<' and
+                token_types[8] == 'NUMINT' and token_types[9] == 'CH;' and token_types[10] == 'IDEN' and
+                token_types[11] == 'AOP+' and token_types[12] == 'AOP+' and token_types[13] == 'CH)' and
+                token_types[14] == 'CH{'):
+                return True, ''
+
+            # Función
+            if len(token_types) >= 6 and token_types[0] == 'FCTN' and token_types[1] == 'IDEN' and token_types[2] == 'CH(' and token_types[-2] == 'CH)' and token_types[-1] == 'CH{':
+                return True, ''
+
+            # Bloque vacío
+            if len(token_types) == 1 and token_types[0] == 'CH}':
+                return True, ''
+
+        except IndexError:
+            return False, f"Error sintáctico en línea {line_number}: Estructura incompleta"
+
+        return False, f"Error sintáctico en línea {line_number}: Estructura no reconocida"
+
+# Ruta para tokenizar
 @app.route("/tokenize", methods=["POST"])
 def tokenize():
     data = request.get_json()
