@@ -221,10 +221,8 @@ const closingSymbols = {
 const controlStructures = {
   IF: { end: "CH}", type: "if" },
   ELSE: { end: "CH}", type: "else" },
-  ELIF: { end: "CH}", type: "elseif" },
   FOR: { end: "CH}", type: "for" },
   WHI: { end: "CH}", type: "while" },
-  DO: { end: "CH}", type: "do" },
   FCTN: { end: "CH}", type: "function" },
 }
 
