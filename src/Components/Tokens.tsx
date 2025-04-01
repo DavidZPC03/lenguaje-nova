@@ -104,6 +104,16 @@ const syntaxRules = [
     message: "Error en estructura if",
   },
   {
+    name: "Else statement",
+    pattern: ["ELSE", "CH{"],
+    message: "Error en estructura else",
+  },
+  {
+    name: "Else if statement",
+    pattern: ["ELSE", "IF", "CH(", "IDEN", "ROP>", "NUMINT", "CH)", "CH{"],
+    message: "Error en estructura else if",
+  },
+  {
     name: "Output",
     pattern: ["OUT", "CH(", "STR", "CH)", "CH;"],
     message: "Error en llamada a output",
@@ -135,6 +145,16 @@ const syntaxRules = [
     message: "Error en estructura while",
   },
   {
+    name: "Do statement",
+    pattern: ["DO", "CH{"],
+    message: "Error en estructura do",
+  },
+  {
+    name: "Do-While loop (cierre)",
+    pattern: ["CH}", "WHI", "CH(", "IDEN", "ROP<", "NUMINT", "CH)", "CH;"],
+    message: "Error en cierre de estructura do-while",
+  },
+  {
     name: "Bloque vacío",
     pattern: ["CH}"],
     message: "Error en bloque vacío",
@@ -154,15 +174,34 @@ const syntaxRules = [
     pattern: ["IDEN", "ASSGN", "STR", "CH;"],
     message: "Error en asignación de variable (cadena)",
   },
+  {
+    name: "Función con retorno",
+    pattern: ["FCTN", "TPINT", "IDEN", "CH(", "CH)", "CH{"],
+    message: "Error en declaración de función con retorno",
+  },
+  {
+    name: "Return statement",
+    pattern: ["RTRN", "IDEN", "CH;"],
+    message: "Error en estructura return",
+  },
 ]
 
 // Definición de tipos de datos
 const dataTypes = {
   TPINT: "entero",
-  TPFLT: "decimal",
+  TPDBL: "decimal",
   TPBOL: "booleano",
   TPSTR: "cadena",
   TPCHR: "caracter",
+}
+
+// Mapeo de tipos para normalizar nombres de tipos
+const typeMapping = {
+  int: "entero",
+  double: "decimal",
+  string: "cadena",
+  boolean: "booleano",
+  char: "caracter",
 }
 
 // Definición de símbolos de apertura y cierre
@@ -178,15 +217,20 @@ const closingSymbols = {
   "CH]": "corchete",
 }
 
-// Modificar la definición de estructuras de control para manejar correctamente los cierres
-// Reemplazar la definición actual de controlStructures con:
-
+// Definición de estructuras de control
 const controlStructures = {
   IF: { end: "CH}", type: "if" },
+  ELSE: { end: "CH}", type: "else" },
+  ELIF: { end: "CH}", type: "elseif" },
   FOR: { end: "CH}", type: "for" },
   WHI: { end: "CH}", type: "while" },
-  SWITCH: { end: "CH}", type: "switch" },
-  FUNC: { end: "CH}", type: "function" },
+  DO: { end: "CH}", type: "do" },
+  FCTN: { end: "CH}", type: "function" },
+}
+
+// Función para normalizar nombres de tipos
+function normalizeType(typeName: string): string {
+  return typeMapping[typeName as keyof typeof typeMapping] || typeName
 }
 
 // Función para inferir el tipo de un valor
@@ -203,6 +247,65 @@ function inferTypeFromValue(value: string): string {
 const validateLine = (lineTokens: Array<{ type: string; value: string }>) => {
   const tokenTypes = lineTokens.map((t) => t.type)
 
+  // Caso especial para output
+  if (tokenTypes[0] === "OUT") {
+    return { valid: true }
+  }
+
+  // Caso especial para declaraciones de variables
+  if (tokenTypes[0] === "TPINT" || tokenTypes[0] === "TPSTR" || tokenTypes[0] === "TPDBL") {
+    if (tokenTypes[1] === "IDEN") {
+      return { valid: true }
+    }
+  }
+
+  // Caso especial para asignaciones
+  if (tokenTypes[0] === "IDEN" && tokenTypes[1] === "ASSGN") {
+    return { valid: true }
+  }
+
+  // Caso especial para estructuras de control
+  if (
+    tokenTypes[0] === "IF" ||
+    tokenTypes[0] === "ELSE" ||
+    tokenTypes[0] === "FOR" ||
+    tokenTypes[0] === "WHI" ||
+    tokenTypes[0] === "DO"
+  ) {
+    return { valid: true }
+  }
+
+  // Caso especial para funciones
+  if (tokenTypes[0] === "FCTN") {
+    return { valid: true }
+  }
+
+  // Caso especial para return
+  if (tokenTypes[0] === "RTRN") {
+    return { valid: true }
+  }
+
+  // Caso especial para llaves
+  if (tokenTypes[0] === "CH{" || tokenTypes[0] === "CH}") {
+    return { valid: true }
+  }
+
+  // Caso especial para cierre de bloque con else
+  if (tokenTypes[0] === "CH}" && tokenTypes[1] === "ELSE") {
+    return { valid: true }
+  }
+
+  // Caso especial para cierre de bloque con else if
+  if (tokenTypes[0] === "CH}" && tokenTypes[1] === "ELSE" && tokenTypes[2] === "IF") {
+    return { valid: true }
+  }
+
+  // Caso especial para cualquier cierre de bloque
+  if (tokenTypes[0] === "CH}") {
+    return { valid: true }
+  }
+
+  // Verificar reglas sintácticas definidas
   for (const rule of syntaxRules) {
     if (rule.pattern.length !== tokenTypes.length) continue // Saltar si no coinciden en longitud
 
@@ -227,6 +330,22 @@ function isValidVariableName(name: string): boolean {
   return name.startsWith("_")
 }
 
+// Función para verificar si dos tipos son compatibles
+function areTypesCompatible(type1: string, type2: string): boolean {
+  // Normalizar tipos
+  type1 = normalizeType(type1)
+  type2 = normalizeType(type2)
+
+  // Mismo tipo
+  if (type1 === type2) return true
+
+  // Conversiones permitidas
+  if (type1 === "decimal" && type2 === "entero") return true
+  if (type1 === "cadena" && type2 === "caracter") return true
+
+  return false
+}
+
 export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }: TokenDisplayProps) {
   const lines = tokens.reduce((acc: { [key: number]: Array<{ type: string; value: string }> }, token) => {
     if (!acc[token.line]) acc[token.line] = []
@@ -242,8 +361,6 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
   const [variables, setVariables] = useState<Variable[]>([])
   const [symbolBalance, setSymbolBalance] = useState<SymbolBalance[]>([])
   const [controlStructureBalance, setControlStructureBalance] = useState<any[]>([])
-  const [hasInitEnd, setHasInitEnd] = useState({ init: false, end: false })
-  // Agregar un nuevo estado para estructuras no utilizadas
   const [unusedStructures, setUnusedStructures] = useState<string[]>([])
 
   // Función para realizar el análisis semántico
@@ -268,6 +385,11 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
     // Seguimiento de bloques para estructuras de control
     const openBlocks: { type: string; line: number; blockLevel: number }[] = []
     let currentBlockLevel = 0
+
+    // Variables para verificar funciones con retorno
+    const functionReturnTypes: { [key: string]: string } = {}
+    let currentFunction: string | null = null
+    let currentFunctionType: string | null = null
 
     // Primero, procesar todos los tokens IDEN para detectar variables
     for (let i = 0; i < tokens.length; i++) {
@@ -311,10 +433,111 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
         }
       }
 
+      // Verificar funciones con retorno
+      if (
+        token.type === "FCTN" &&
+        i + 2 < tokens.length &&
+        (tokens[i + 1].type === "TPINT" || tokens[i + 1].type === "TPSTR" || tokens[i + 1].type === "TPDBL") &&
+        tokens[i + 2].type === "IDEN"
+      ) {
+        const returnType = tokens[i + 1].value
+        const functionName = tokens[i + 2].value
+        functionReturnTypes[functionName] = returnType
+        currentFunction = functionName
+        currentFunctionType = returnType
+      }
+
+      // Verificar return en funciones
+      if (token.type === "RTRN" && i + 1 < tokens.length && currentFunction && currentFunctionType) {
+        const returnValue = tokens[i + 1]
+        let returnValueType = "desconocido"
+
+        if (returnValue.type === "NUMINT") {
+          returnValueType = "entero"
+        } else if (returnValue.type === "NUMDB") {
+          returnValueType = "decimal"
+        } else if (returnValue.type === "STR") {
+          returnValueType = "cadena"
+        } else if (returnValue.type === "IDEN") {
+          // Buscar el tipo de la variable
+          const varName = returnValue.value
+          const variable = extractedVariables.find((v) => v.name === varName)
+          if (variable && variable.type !== "desconocido") {
+            returnValueType = variable.type
+          }
+        }
+
+        // Verificar compatibilidad de tipos
+        if (returnValueType !== "desconocido" && !areTypesCompatible(currentFunctionType, returnValueType)) {
+          errors.push({
+            message: `Tipo de retorno incompatible: función "${currentFunction}" espera "${normalizeType(currentFunctionType)}" pero retorna "${returnValueType}"`,
+            line: token.line,
+            type: "ERROR_TIPO_RETORNO",
+          })
+        }
+      }
+
       // También buscar variables en condiciones de estructuras de control
       if (
-        (token.type === "IF" || token.type === "WHI" || token.type === "FOR") &&
+        (token.type === "IF" ||
+          token.type === "WHI" ||
+          token.type === "FOR" ||
+          (token.type === "ELSE" && i + 1 < tokens.length && tokens[i + 1].type === "IF")) &&
         i + 2 < tokens.length &&
+        tokens[i + 1 + (token.type === "ELSE" ? 1 : 0)].type === "CH("
+      ) {
+        // Ajustar el índice de inicio para el caso de "else if"
+        const startIdx = i + 2 + (token.type === "ELSE" ? 1 : 0)
+
+        // Buscar todos los IDEN dentro de la condición hasta encontrar CH)
+        let j = startIdx
+        while (j < tokens.length && tokens[j].type !== "CH)") {
+          if (tokens[j].type === "IDEN") {
+            const varName = tokens[j].value
+            const isValidName = isValidVariableName(varName)
+
+            // Verificar si la variable ya existe
+            const existingVar = extractedVariables.find((v) => v.name === varName)
+
+            if (!existingVar) {
+              // Agregar la variable
+              extractedVariables.push({
+                name: varName,
+                type: "desconocido",
+                value: null,
+                line: tokens[j].line,
+                isDeclared: false,
+                isValidName: isValidName,
+              })
+            }
+
+            // Si el nombre no es válido, agregar error
+            if (!isValidName) {
+              // Verificar si ya existe un error para esta variable en esta línea
+              const existingError = errors.some(
+                (e) => e.type === "ERROR_NOMBRE_VARIABLE" && e.variable === varName && e.line === tokens[j].line,
+              )
+
+              if (!existingError) {
+                errors.push({
+                  message: `Nombre de variable "${varName}" inválido. Debe comenzar con guion bajo (_)`,
+                  line: tokens[j].line,
+                  type: "ERROR_NOMBRE_VARIABLE",
+                  variable: varName,
+                })
+              }
+            }
+          }
+          j++
+        }
+      }
+
+      // Buscar variables en condiciones de do-while (después del while)
+      if (
+        token.type === "WHI" &&
+        i > 0 &&
+        tokens[i - 1].type === "CH}" &&
+        i + 1 < tokens.length &&
         tokens[i + 1].type === "CH("
       ) {
         // Buscar todos los IDEN dentro de la condición hasta encontrar CH)
@@ -398,28 +621,158 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
         // Buscar la variable en nuestro registro
         const varIndex = extractedVariables.findIndex((v) => v.name === varName)
 
-        if (varIndex !== -1) {
+        if (varIndex !== -1 && extractedVariables[varIndex].isDeclared) {
           // Verificar tipo de asignación
           const valueTokenIndex = i + 2
           if (valueTokenIndex < tokens.length) {
             const valueToken = tokens[valueTokenIndex]
-            const inferredType = inferTypeFromValue(valueToken.value)
+            let valueType = "desconocido"
 
-            if (
-              inferredType !== "desconocido" &&
-              extractedVariables[varIndex].type !== "desconocido" &&
-              inferredType !== extractedVariables[varIndex].type
-            ) {
-              errors.push({
-                message: `Tipo incompatible: variable "${varName}" es de tipo "${extractedVariables[varIndex].type}" pero se le asigna un valor de tipo "${inferredType}"`,
-                line: token.line,
-                type: "ERROR_TIPO_INCOMPATIBLE",
-                variable: varName,
-              })
+            // Determinar el tipo del valor asignado
+            if (valueToken.type === "NUMINT") {
+              valueType = "entero"
+            } else if (valueToken.type === "NUMDB") {
+              valueType = "decimal"
+            } else if (valueToken.type === "STR") {
+              valueType = "cadena"
+            } else if (valueToken.type === "TRUE" || valueToken.type === "FALSE") {
+              valueType = "booleano"
+            } else if (valueToken.type === "IDEN") {
+              // Buscar el tipo de la variable
+              const otherVarIndex = extractedVariables.findIndex((v) => v.name === valueToken.value)
+              if (otherVarIndex !== -1 && extractedVariables[otherVarIndex].type !== "desconocido") {
+                valueType = extractedVariables[otherVarIndex].type
+              }
+            }
+
+            // Verificar compatibilidad de tipos
+            if (extractedVariables[varIndex].type !== "desconocido" && valueType !== "desconocido") {
+              if (!areTypesCompatible(extractedVariables[varIndex].type, valueType)) {
+                // Verificar si ya existe un error para esta variable en esta línea
+                const existingError = errors.some(
+                  (e) => e.type === "ERROR_TIPO_INCOMPATIBLE" && e.line === token.line && e.variable === varName,
+                )
+
+                if (!existingError) {
+                  errors.push({
+                    message: `Tipo incompatible: variable "${varName}" es de tipo "${normalizeType(extractedVariables[varIndex].type)}" pero se le asigna un valor de tipo "${valueType}"`,
+                    line: token.line,
+                    type: "ERROR_TIPO_INCOMPATIBLE",
+                    variable: varName,
+                  })
+                }
+              }
             }
 
             // Actualizar valor de la variable
             extractedVariables[varIndex].value = valueToken.value
+          }
+        }
+      }
+
+      // Verificar operadores no soportados primero (independientemente de los operandos)
+      if (token.type === "AOP%" || token.type === "AOP++" || token.type === "AOP--" || token.type === "AOPASSGN") {
+        // Verificar si ya existe un error para este operador en esta línea
+        const existingError = errors.some(
+          (e) => e.type === "ERROR_OPERADOR_NO_SOPORTADO" && e.line === token.line && e.message.includes(token.value),
+        )
+
+        if (!existingError) {
+          errors.push({
+            message: `Operador "${token.value}" no soportado`,
+            line: token.line,
+            type: "ERROR_OPERADOR_NO_SOPORTADO",
+          })
+        }
+      }
+
+      // Verificar operaciones aritméticas con tipos incompatibles
+      if (token.type.startsWith("AOP") && i > 0 && i + 1 < tokens.length) {
+        const leftOperand = tokens[i - 1]
+        const rightOperand = tokens[i + 1]
+
+        // Verificar tipos de operandos
+        let leftType = "desconocido"
+        let rightType = "desconocido"
+
+        if (leftOperand.type === "NUMINT") {
+          leftType = "entero"
+        } else if (leftOperand.type === "NUMDB") {
+          leftType = "decimal"
+        } else if (leftOperand.type === "IDEN") {
+          const variable = extractedVariables.find((v) => v.name === leftOperand.value)
+          if (variable && variable.type !== "desconocido") {
+            leftType = variable.type
+          }
+        }
+
+        if (rightOperand.type === "NUMINT") {
+          rightType = "entero"
+        } else if (rightOperand.type === "NUMDB") {
+          rightType = "decimal"
+        } else if (rightOperand.type === "IDEN") {
+          const variable = extractedVariables.find((v) => v.name === rightOperand.value)
+          if (variable && variable.type !== "desconocido") {
+            rightType = variable.type
+          }
+        }
+
+        // Verificar compatibilidad de tipos en operaciones aritméticas
+        if (leftType !== "desconocido" && rightType !== "desconocido" && !areTypesCompatible(leftType, rightType)) {
+          errors.push({
+            message: `Tipos incompatibles en operación aritmética: "${normalizeType(leftType)}" ${token.value} "${normalizeType(rightType)}"`,
+            line: token.line,
+            type: "ERROR_TIPOS_OPERACION",
+          })
+        }
+      }
+
+      // Verificar estructuras de control incompletas
+      if (token.type === "IF" || token.type === "WHI" || token.type === "FOR") {
+        // Verificar si hay paréntesis para la condición
+        if (i + 1 >= tokens.length || tokens[i + 1].type !== "CH(") {
+          errors.push({
+            message: `Estructura ${token.value} incompleta: falta paréntesis de apertura para la condición`,
+            line: token.line,
+            type: "ERROR_ESTRUCTURA_INCOMPLETA",
+          })
+        } else {
+          // Buscar el paréntesis de cierre
+          let foundClosingParen = false
+          for (let j = i + 2; j < tokens.length && j < i + 20; j++) {
+            if (tokens[j].line > token.line) break // No buscar en líneas posteriores
+            if (tokens[j].type === "CH)") {
+              foundClosingParen = true
+              break
+            }
+          }
+
+          if (!foundClosingParen) {
+            errors.push({
+              message: `Estructura ${token.value} incompleta: falta paréntesis de cierre para la condición`,
+              line: token.line,
+              type: "ERROR_ESTRUCTURA_INCOMPLETA",
+            })
+          }
+        }
+
+        // Para FOR, verificar si tiene los tres componentes
+        if (token.type === "FOR") {
+          let semicolonCount = 0
+          for (let j = i + 2; j < tokens.length && j < i + 20; j++) {
+            if (tokens[j].line > token.line) break
+            if (tokens[j].type === "CH;") {
+              semicolonCount++
+            }
+            if (tokens[j].type === "CH)") break
+          }
+
+          if (semicolonCount < 2) {
+            errors.push({
+              message: `Estructura FOR incompleta: debe tener inicialización, condición e incremento separados por punto y coma`,
+              line: token.line,
+              type: "ERROR_ESTRUCTURA_FOR_INCOMPLETA",
+            })
           }
         }
       }
@@ -451,6 +804,12 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
             if (lastBlock) {
               controlStructureCounts[lastBlock.type].count--
             }
+          }
+
+          // Si estamos cerrando una función, resetear el contexto de función actual
+          if (currentFunction && currentBlockLevel === 0) {
+            currentFunction = null
+            currentFunctionType = null
           }
         }
       }
@@ -755,7 +1114,9 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
                           {semanticErrors.map((error, index) => (
                             <Tr key={index}>
                               <Td>
-                                <Badge colorScheme="red">{error.type.replace("ERROR_", "")}</Badge>
+                                <Badge colorScheme="red">
+                                  {error.type.includes("ERROR_") ? error.type.replace("ERROR_", "") : error.type}
+                                </Badge>
                               </Td>
                               <Td>{error.line > 0 ? error.line : "Global"}</Td>
                               <Td color="red.500">{error.message}</Td>
