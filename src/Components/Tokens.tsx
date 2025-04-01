@@ -119,6 +119,11 @@ const syntaxRules = [
     message: "Error en llamada a output",
   },
   {
+    name: "Input",
+    pattern: ["INP", "CH(", "CH)", "CH;"],
+    message: "Error en llamada a input",
+  },
+  {
     name: "For loop",
     pattern: [
       "FOR",
@@ -247,6 +252,11 @@ const validateLine = (lineTokens: Array<{ type: string; value: string }>) => {
 
   // Caso especial para output
   if (tokenTypes[0] === "OUT") {
+    return { valid: true }
+  }
+
+  // Caso especial para input
+  if (tokenTypes[0] === "INP") {
     return { valid: true }
   }
 
@@ -472,6 +482,76 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
             line: token.line,
             type: "ERROR_TIPO_RETORNO",
           })
+        }
+      }
+
+      // Verificar funciones output e input
+      if (token.type === "OUT") {
+        // Verificar si hay paréntesis de apertura
+        if (i + 1 >= tokens.length || tokens[i + 1].type !== "CH(") {
+          errors.push({
+            message: "Función output incompleta (falta paréntesis de apertura)",
+            line: token.line,
+            type: "ERROR_FUNCION_OUTPUT",
+          })
+        } else {
+          // Verificar si hay paréntesis de cierre
+          let has_closing_paren = false
+          let has_string = false
+          for (let j = i + 2; j < Math.min(i + 10, tokens.length); j++) {
+            if (tokens[j].type === "CH)") {
+              has_closing_paren = true
+              break
+            }
+            if (tokens[j].type === "STR") {
+              has_string = true
+            }
+          }
+
+          if (!has_closing_paren) {
+            errors.push({
+              message: "Función output incompleta (falta paréntesis de cierre)",
+              line: token.line,
+              type: "ERROR_FUNCION_OUTPUT",
+            })
+          } else if (
+            !has_string &&
+            i + 2 < tokens.length &&
+            tokens[i + 2].type !== "STR" &&
+            tokens[i + 2].type !== "IDEN"
+          ) {
+            errors.push({
+              message: "Función output debe recibir una cadena o variable",
+              line: token.line,
+              type: "ERROR_FUNCION_OUTPUT",
+            })
+          }
+        }
+      } else if (token.type === "INP") {
+        // Verificar si hay paréntesis de apertura
+        if (i + 1 >= tokens.length || tokens[i + 1].type !== "CH(") {
+          errors.push({
+            message: "Función input incompleta (falta paréntesis de apertura)",
+            line: token.line,
+            type: "ERROR_FUNCION_INPUT",
+          })
+        } else {
+          // Verificar si hay paréntesis de cierre
+          let has_closing_paren = false
+          for (let j = i + 2; j < Math.min(i + 10, tokens.length); j++) {
+            if (tokens[j].type === "CH)") {
+              has_closing_paren = true
+              break
+            }
+          }
+
+          if (!has_closing_paren) {
+            errors.push({
+              message: "Función input incompleta (falta paréntesis de cierre)",
+              line: token.line,
+              type: "ERROR_FUNCION_INPUT",
+            })
+          }
         }
       }
 

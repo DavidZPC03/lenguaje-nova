@@ -74,7 +74,9 @@ error_messages = {
     'SYNTAX_ERROR': "Error de sintaxis",
     'TYPE_MISMATCH': "Tipos incompatibles en operación",
     'INCOMPLETE_CONDITION': "Condición incompleta en estructura de control",
-    'FUNCTION_RETURN_TYPE_MISMATCH': "Tipo de retorno incompatible con la declaración de función"
+    'FUNCTION_RETURN_TYPE_MISMATCH': "Tipo de retorno incompatible con la declaración de función",
+    'INCOMPLETE_OUTPUT': "Función output incompleta (faltan paréntesis o comillas)",
+    'INCOMPLETE_INPUT': "Función input incompleta (faltan paréntesis)"
 }
 
 # Palabras reservadas válidas
@@ -477,6 +479,62 @@ class Lexer:
                             'message': f"Tipo de retorno '{return_value_type}' incompatible con el tipo de función '{normalize_type(current_function_type)}'"
                         })
             
+            # Verificar funciones output e input
+            elif token['type'] == 'OUT':
+                # Verificar si hay paréntesis de apertura
+                if i + 1 >= len(self.tokens) or self.tokens[i+1]['type'] != 'CH(':
+                    errors.append({
+                        'line': token['line'],
+                        'type': 'INCOMPLETE_OUTPUT',
+                        'message': "Función output incompleta (falta paréntesis de apertura)"
+                    })
+                else:
+                    # Verificar si hay paréntesis de cierre
+                    has_closing_paren = False
+                    has_string = False
+                    for j in range(i+2, min(i+10, len(self.tokens))):
+                        if self.tokens[j]['type'] == 'CH)':
+                            has_closing_paren = True
+                            break
+                        if self.tokens[j]['type'] == 'STR':
+                            has_string = True
+                    
+                    if not has_closing_paren:
+                        errors.append({
+                            'line': token['line'],
+                            'type': 'INCOMPLETE_OUTPUT',
+                            'message': "Función output incompleta (falta paréntesis de cierre)"
+                        })
+                    elif not has_string and i + 2 < len(self.tokens) and self.tokens[i+2]['type'] != 'STR' and self.tokens[i+2]['type'] != 'IDEN':
+                        errors.append({
+                            'line': token['line'],
+                            'type': 'INCOMPLETE_OUTPUT',
+                            'message': "Función output debe recibir una cadena o variable"
+                        })
+            
+            elif token['type'] == 'INP':
+                # Verificar si hay paréntesis de apertura
+                if i + 1 >= len(self.tokens) or self.tokens[i+1]['type'] != 'CH(':
+                    errors.append({
+                        'line': token['line'],
+                        'type': 'INCOMPLETE_INPUT',
+                        'message': "Función input incompleta (falta paréntesis de apertura)"
+                    })
+                else:
+                    # Verificar si hay paréntesis de cierre
+                    has_closing_paren = False
+                    for j in range(i+2, min(i+10, len(self.tokens))):
+                        if self.tokens[j]['type'] == 'CH)':
+                            has_closing_paren = True
+                            break
+                    
+                    if not has_closing_paren:
+                        errors.append({
+                            'line': token['line'],
+                            'type': 'INCOMPLETE_INPUT',
+                            'message': "Función input incompleta (falta paréntesis de cierre)"
+                        })
+            
             i += 1
 
         # Verificar equilibrio de símbolos
@@ -585,6 +643,10 @@ class Lexer:
 
             # Función output
             if len(token_types) >= 3 and token_types[0] == 'OUT':
+                return True, ''
+                
+            # Función input
+            if len(token_types) >= 3 and token_types[0] == 'INP':
                 return True, ''
 
             # Función con retorno de valor
