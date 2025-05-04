@@ -726,72 +726,220 @@ def infix_to_postfix(expression):
 
 # Add a function to convert infix to prefix notation
 def infix_to_prefix(expression):
-    # Reverse the expression and swap ( and )
-    reversed_expr = ''.join(reversed(expression))
-    reversed_expr = reversed_expr.replace('(', 'temp').replace(')', '(').replace('temp', ')')
-    
-    # Convert to postfix
-    postfix = infix_to_postfix(reversed_expr)
-    
-    # Reverse the result
-    return ' '.join(reversed(postfix.split()))
+    # Primero separamos la parte izquierda y derecha de la asignación
+    parts = expression.split('=')
+    if len(parts) < 2:
+        return expression
 
-# Add a function to generate triplets
+    left_side = parts[0].strip()
+    right_side = parts[1].strip()
+    
+    # Eliminar comentarios si existen
+    if '//' in right_side:
+        right_side = right_side.split('//')[0].strip()
+    
+    # Verificar si hay operadores compuestos (+=, -=, etc.)
+    if left_side.endswith('+') or left_side.endswith('-') or left_side.endswith('*') or left_side.endswith('/'):
+        return f"{left_side}= ERROR: operador compuesto no soportado"
+    
+    # Buscar todos los operadores y operandos en el lado derecho
+    import re
+    tokens = re.findall(r'[a-zA-Z0-9_]+|[+\-*/()]', right_side)
+    
+    # Verificar si hay tokens adyacentes sin operador entre ellos
+    for i in range(len(tokens) - 1):
+        if re.match(r'[a-zA-Z0-9_]+', tokens[i]) and re.match(r'[a-zA-Z0-9_]+', tokens[i+1]):
+            return f"{left_side} = ERROR: falta operador entre {tokens[i]} y {tokens[i+1]}"
+    
+    # Función auxiliar para convertir a notación prefija
+    def convert_to_prefix(tokens):
+        if not tokens or len(tokens) == 0:
+            return ''
+        
+        # Si solo hay un token, devolverlo
+        if len(tokens) == 1:
+            return tokens[0]
+        
+        # Buscar el operador de menor precedencia
+        min_precedence_idx = -1
+        min_precedence = float('inf')
+        parentheses_level = 0
+        
+        precedence = {'+': 1, '-': 1, '*': 2, '/': 2}
+        
+        for i in range(len(tokens) - 1, -1, -1):
+            token = tokens[i]
+            
+            if token == ')':
+                parentheses_level += 1
+            elif token == '(':
+                parentheses_level -= 1
+            
+            # Solo considerar operadores fuera de paréntesis y con la precedencia más baja
+            if parentheses_level == 0 and token in precedence:
+                if precedence[token] <= min_precedence:
+                    min_precedence = precedence[token]
+                    min_precedence_idx = i
+        
+        # Si no se encontró operador, buscar paréntesis
+        if min_precedence_idx == -1:
+            if tokens[0] == '(' and tokens[-1] == ')':
+                # Quitar paréntesis externos y procesar el contenido
+                return convert_to_prefix(tokens[1:-1])
+            # Si no hay operadores ni paréntesis, devolver los tokens como están
+            return ' '.join(tokens)
+        
+        # Dividir en operando izquierdo y derecho
+        operator = tokens[min_precedence_idx]
+        left_tokens = tokens[:min_precedence_idx]
+        right_tokens = tokens[min_precedence_idx + 1:]
+        
+        # Convertir recursivamente los operandos
+        left_prefix = convert_to_prefix(left_tokens)
+        right_prefix = convert_to_prefix(right_tokens)
+        
+        # Construir la expresión prefija
+        return f"{operator} {left_prefix} {right_prefix}"
+    
+    # Convertir el lado derecho a notación prefija
+    prefix_right_side = convert_to_prefix(tokens)
+    
+    # Construir la expresión completa
+    return f"{left_side} = {prefix_right_side}"
+
+# Reemplazar la función generate_triplets con esta versión en Python
 def generate_triplets(expression):
     triplets = []
-    tokens = re.findall(r'[a-zA-Z0-9_]+|[+\-*/=]', expression)
     
-    if len(tokens) < 3:
+    # Primero separamos la parte izquierda y derecha de la asignación
+    parts = expression.split('=')
+    if len(parts) < 2:
         return triplets
     
-    # Simple case for assignment expressions like "x = y + z"
-    if '=' in tokens:
-        equal_index = tokens.index('=')
-        left_side = tokens[equal_index - 1]
-        right_side = tokens[equal_index + 1:]
+    left_side = parts[0].strip()
+    right_side = parts[1].strip()
+    
+    # Eliminar comentarios si existen
+    if '//' in right_side:
+        right_side = right_side.split('//')[0].strip()
+    
+    # Verificar si hay operadores compuestos (+=, -=, etc.)
+    if left_side.endswith('+') or left_side.endswith('-') or left_side.endswith('*') or left_side.endswith('/'):
+        return triplets  # No generar tripletas para operadores no soportados
+    
+    # Buscar todos los operadores y operandos en el lado derecho
+    import re
+    tokens = re.findall(r'[a-zA-Z0-9_]+|[+\-*/()]', right_side)
+    
+    # Verificar si hay tokens adyacentes sin operador entre ellos
+    for i in range(len(tokens) - 1):
+        if re.match(r'[a-zA-Z0-9_]+', tokens[i]) and re.match(r'[a-zA-Z0-9_]+', tokens[i+1]):
+            return triplets  # No generar tripletas si hay error de sintaxis
+    
+    # Función para generar tripletas recursivamente
+    def generate_triplets_recursive(tokens, temp_var_counter=1):
+        if not tokens or len(tokens) == 0:
+            return {'result': '', 'counter': temp_var_counter}
         
-        if len(right_side) == 1:
-            # Simple assignment: x = y
-            triplets.append({
-                'object': left_side,
-                'source': right_side[0],
-                'operator': '=',
-                'description': f"Asigna el valor de {right_side[0]} a {left_side}"
-            })
-        elif len(right_side) == 3 and right_side[1] in ['+', '-', '*', '/']:
-            # Assignment with operation: x = y + z
-            temp = "T1"
-            triplets.append({
-                'object': temp,
-                'source': right_side[0],
-                'operator': '=',
-                'description': f"Asigna el valor de {right_side[0]} a una variable temporal"
-            })
+        # Si solo hay un token, devolverlo
+        if len(tokens) == 1:
+            return {'result': tokens[0], 'counter': temp_var_counter}
+        
+        # Buscar el operador de menor precedencia
+        min_precedence_idx = -1
+        min_precedence = float('inf')
+        parentheses_level = 0
+        
+        precedence = {'+': 1, '-': 1, '*': 2, '/': 2}
+        
+        for i in range(len(tokens) - 1, -1, -1):
+            token = tokens[i]
             
-            op_desc = {
-                '+': 'suma',
-                '-': 'resta',
-                '*': 'multiplica',
-                '/': 'divide'
-            }
+            if token == ')':
+                parentheses_level += 1
+            elif token == '(':
+                parentheses_level -= 1
             
+            # Solo considerar operadores fuera de paréntesis y con la precedencia más baja
+            if parentheses_level == 0 and token in precedence:
+                if precedence[token] <= min_precedence:
+                    min_precedence = precedence[token]
+                    min_precedence_idx = i
+        
+        # Si no se encontró operador, buscar paréntesis
+        if min_precedence_idx == -1:
+            if tokens[0] == '(' and tokens[-1] == ')':
+                # Quitar paréntesis externos y procesar el contenido
+                return generate_triplets_recursive(tokens[1:-1], temp_var_counter)
+            # Si no hay operadores ni paréntesis, devolver los tokens como están
+            return {'result': ' '.join(tokens), 'counter': temp_var_counter}
+        
+        # Dividir en operando izquierdo y derecho
+        operator = tokens[min_precedence_idx]
+        left_tokens = tokens[:min_precedence_idx]
+        right_tokens = tokens[min_precedence_idx + 1:]
+        
+        # Procesar recursivamente los operandos
+        left_result = generate_triplets_recursive(left_tokens, temp_var_counter)
+        right_result = generate_triplets_recursive(right_tokens, left_result['counter'])
+        
+        # Crear una nueva variable temporal
+        temp_var = f"T{right_result['counter']}"
+        new_counter = right_result['counter'] + 1
+        
+        # Descripción del operador
+        op_desc = {
+            '+': 'suma',
+            '-': 'resta',
+            '*': 'multiplica',
+            '/': 'divide'
+        }
+        
+        # Generar tripletas
+        if left_result['result'].startswith('T'):
+            # No necesitamos una tripleta adicional si el resultado izquierdo ya es una variable temporal
+            pass
+        else:
             triplets.append({
-                'object': temp,
-                'source': right_side[2],
-                'operator': right_side[1],
-                'description': f"Se {op_desc.get(right_side[1], 'opera')} el valor de {right_side[2]} a la variable temporal"
-            })
-            
-            triplets.append({
-                'object': left_side,
-                'source': temp,
+                'object': temp_var,
+                'source': left_result['result'],
                 'operator': '=',
-                'description': f"Se asigna la variable temporal al identificador"
+                'description': f"Asigna el valor de {left_result['result']} a una variable temporal"
             })
+        
+        triplets.append({
+            'object': temp_var,
+            'source': right_result['result'],
+            'operator': operator,
+            'description': f"Se {op_desc.get(operator, 'opera')} el valor de {right_result['result']} a la variable temporal"
+        })
+        
+        return {'result': temp_var, 'counter': new_counter}
+    
+    # Caso simple: asignación directa
+    if len(tokens) == 1:
+        triplets.append({
+            'object': left_side,
+            'source': tokens[0],
+            'operator': '=',
+            'description': f"Asigna el valor de {tokens[0]} a {left_side}"
+        })
+        return triplets
+    
+    # Caso complejo: expresión con operadores
+    result = generate_triplets_recursive(tokens)
+    
+    # Agregar la asignación final
+    triplets.append({
+        'object': left_side,
+        'source': result['result'],
+        'operator': '=',
+        'description': f"Se asigna el resultado final a {left_side}"
+    })
     
     return triplets
 
-# Modify the tokenize route to include expression analysis
+# Modificar la función tokenize para detectar errores de sintaxis en expresiones
 @app.route("/tokenize", methods=["POST"])
 def tokenize():
     data = request.get_json()
@@ -817,30 +965,57 @@ def tokenize():
     
     # Find expressions in the code
     for line_num, line_tokens in lines.items():
-        line_text = ' '.join([t['value'] for t in line_tokens])
+        # Filtrar tokens de comentarios
+        code_tokens = [t for t in line_tokens if t['type'] != 'COMM']
         
-        # Simple detection of expressions (this can be improved)
-        has_assignment = any(t['type'] == 'ASSGN' for t in line_tokens)
-        has_operator = any(t['type'] in ['AOP+', 'AOP-', 'AOP*', 'AOP/'] for t in line_tokens)
+        # Verificar si hay una asignación
+        has_assignment = any(t['type'] == 'ASSGN' for t in code_tokens)
         
-        if has_assignment and has_operator:
-            # Extract the expression
-            expression = ''.join([t['value'] for t in line_tokens])
+        if has_assignment:
+            # Extraer la expresión completa
+            expression_parts = []
+            for token in code_tokens:
+                if token['type'] == 'IDEN' or token['type'].startswith('AOP') or token['type'] == 'ASSGN' or \
+                   token['type'] == 'NUMINT' or token['type'] == 'NUMDB' or \
+                   token['type'] == 'CH(' or token['type'] == 'CH)':
+                    expression_parts.append(token['value'])
             
-            # Convert to prefix and postfix
-            prefix = infix_to_prefix(expression)
-            postfix = infix_to_postfix(expression)
+            expression = ''.join(expression_parts)
             
-            expressions.append({
-                'line': line_num,
-                'expression': expression,
-                'prefix': prefix,
-                'postfix': postfix
-            })
+            # Verificar si hay operadores adyacentes o identificadores sin operador entre ellos
+            has_syntax_error = False
+            for i in range(len(code_tokens) - 1):
+                if code_tokens[i]['type'] == 'IDEN' and code_tokens[i+1]['type'] == 'IDEN':
+                    errors.append({
+                        'line': line_num,
+                        'type': 'SYNTAX_ERROR',
+                        'message': f"Falta operador entre {code_tokens[i]['value']} y {code_tokens[i+1]['value']}"
+                    })
+                    has_syntax_error = True
+                    break
             
-            # Generate triplets
-            expr_triplets = generate_triplets(expression)
-            triplets.extend(expr_triplets)
+            if not has_syntax_error:
+                # Convertir a notación prefija
+                prefix = infix_to_prefix(expression)
+                
+                # Verificar si hay un error en la conversión
+                if 'ERROR:' in prefix:
+                    error_msg = prefix.split('ERROR:')[1].strip()
+                    errors.append({
+                        'line': line_num,
+                        'type': 'SYNTAX_ERROR',
+                        'message': error_msg
+                    })
+                else:
+                    expressions.append({
+                        'line': line_num,
+                        'expression': expression,
+                        'prefix': prefix
+                    })
+                    
+                    # Generar tripletas
+                    expr_triplets = generate_triplets(expression)
+                    triplets.extend(expr_triplets)
     
     # Combine errors léxicos y sintácticos, evitando duplicados
     syntax_errors = [

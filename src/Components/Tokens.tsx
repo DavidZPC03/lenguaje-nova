@@ -412,21 +412,77 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
     if (parts.length < 2) return expression
 
     const leftSide = parts[0].trim()
-    const rightSide = parts[1].trim()
+    let rightSide = parts[1].trim()
 
-    // Buscamos operadores en el lado derecho
-    const operatorMatch = rightSide.match(/[+\-*/]/)
-    if (!operatorMatch) return `${leftSide} = ${rightSide}`
+    // Eliminar comentarios si existen
+    rightSide = rightSide.split("//")[0].trim()
 
-    const operator = operatorMatch[0]
-    const operatorIndex = rightSide.indexOf(operator)
+    // Función auxiliar para convertir a notación prefija
+    const convertExpressionToPrefix = (expr: string): string => {
+      // Tokenizar la expresión
+      const tokens = expr.match(/[a-zA-Z0-9_]+|[+\-*/()]/g) || []
 
-    // Extraemos los operandos
-    const operand1 = rightSide.substring(0, operatorIndex).trim()
-    const operand2 = rightSide.substring(operatorIndex + 1).trim()
+      // Si no hay tokens o solo hay uno, devolver la expresión original
+      if (tokens.length <= 1) return expr
 
-    // Construimos la notación prefija
-    return `${leftSide} = ${operator} ${operand1} ${operand2}`
+      // Función recursiva para convertir a notación prefija
+      const convertTokensToPrefix = (tokens: string[]): string => {
+        if (tokens.length === 0) return ""
+        if (tokens.length === 1) return tokens[0]
+
+        // Buscar el operador de menor precedencia
+        let minPrecedenceIdx = -1
+        let minPrecedence = Number.POSITIVE_INFINITY
+        let parenthesesLevel = 0
+
+        const precedence: { [key: string]: number } = { "+": 1, "-": 1, "*": 2, "/": 2 }
+
+        for (let i = 0; i < tokens.length; i++) {
+          const token = tokens[i]
+
+          if (token === "(") parenthesesLevel++
+          else if (token === ")") parenthesesLevel--
+
+          // Solo considerar operadores fuera de paréntesis
+          if (parenthesesLevel === 0 && token in precedence) {
+            if (precedence[token] <= minPrecedence) {
+              minPrecedence = precedence[token]
+              minPrecedenceIdx = i
+            }
+          }
+        }
+
+        // Si no se encontró operador, buscar paréntesis
+        if (minPrecedenceIdx === -1) {
+          if (tokens[0] === "(" && tokens[tokens.length - 1] === ")") {
+            // Quitar paréntesis externos y procesar el contenido
+            return convertTokensToPrefix(tokens.slice(1, tokens.length - 1))
+          }
+          // Si no hay operadores ni paréntesis, devolver los tokens como están
+          return tokens.join(" ")
+        }
+
+        // Dividir en operando izquierdo y derecho
+        const operator = tokens[minPrecedenceIdx]
+        const leftTokens = tokens.slice(0, minPrecedenceIdx)
+        const rightTokens = tokens.slice(minPrecedenceIdx + 1)
+
+        // Convertir recursivamente los operandos
+        const leftPrefix = convertTokensToPrefix(leftTokens)
+        const rightPrefix = convertTokensToPrefix(rightTokens)
+
+        // Construir la expresión prefija
+        return `${operator} ${leftPrefix} ${rightPrefix}`
+      }
+
+      return convertTokensToPrefix(tokens)
+    }
+
+    // Convertir el lado derecho a notación prefija
+    const prefixRightSide = convertExpressionToPrefix(rightSide)
+
+    // Construir la expresión completa
+    return `${leftSide} = ${prefixRightSide}`
   }
 
   // Modificar la función generateTriplets para mejorar la detección de expresiones
@@ -438,58 +494,118 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
     if (parts.length < 2) return result
 
     const leftSide = parts[0].trim()
-    const rightSide = parts[1].trim()
+    let rightSide = parts[1].trim()
 
-    // Buscamos operadores en el lado derecho
-    const operatorMatch = rightSide.match(/[+\-*/]/)
+    // Eliminar comentarios si existen
+    rightSide = rightSide.split("//")[0].trim()
 
-    if (!operatorMatch) {
-      // Asignación simple: x = y
+    // Tokenizar la expresión
+    const tokens = rightSide.match(/[a-zA-Z0-9_]+|[+\-*/()]/g) || []
+
+    // Si no hay tokens, devolver un array vacío
+    if (tokens.length === 0) return result
+
+    // Si solo hay un token, es una asignación simple
+    if (tokens.length === 1) {
       result.push({
         object: leftSide,
-        source: rightSide,
+        source: tokens[0],
         operator: "=",
-        description: `Asigna el valor de ${rightSide} a ${leftSide}`,
+        description: `Asigna el valor de ${tokens[0]} a ${leftSide}`,
       })
-    } else {
-      const operator = operatorMatch[0]
-      const operatorIndex = rightSide.indexOf(operator)
+      return result
+    }
 
-      // Extraemos los operandos
-      const operand1 = rightSide.substring(0, operatorIndex).trim()
-      const operand2 = rightSide.substring(operatorIndex + 1).trim()
+    // Función recursiva para generar tripletas
+    const generateTripletsRecursive = (tokens: string[], tempVarCounter = 1): { result: string; counter: number } => {
+      if (tokens.length === 0) return { result: "", counter: tempVarCounter }
+      if (tokens.length === 1) return { result: tokens[0], counter: tempVarCounter }
 
-      // Generamos las tripletas
-      const temp = `T1`
+      // Buscar el operador de menor precedencia
+      let minPrecedenceIdx = -1
+      let minPrecedence = Number.POSITIVE_INFINITY
+      let parenthesesLevel = 0
 
-      result.push({
-        object: temp,
-        source: operand1,
-        operator: "=",
-        description: `Asigna el valor de ${operand1} a una variable temporal`,
-      })
+      const precedence: { [key: string]: number } = { "+": 1, "-": 1, "*": 2, "/": 2 }
 
-      const operatorDesc = {
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i]
+
+        if (token === "(") parenthesesLevel++
+        else if (token === ")") parenthesesLevel--
+
+        // Solo considerar operadores fuera de paréntesis
+        if (parenthesesLevel === 0 && token in precedence) {
+          if (precedence[token] <= minPrecedence) {
+            minPrecedence = precedence[token]
+            minPrecedenceIdx = i
+          }
+        }
+      }
+
+      // Si no se encontró operador, buscar paréntesis
+      if (minPrecedenceIdx === -1) {
+        if (tokens[0] === "(" && tokens[tokens.length - 1] === ")") {
+          // Quitar paréntesis externos y procesar el contenido
+          return generateTripletsRecursive(tokens.slice(1, tokens.length - 1), tempVarCounter)
+        }
+        // Si no hay operadores ni paréntesis, devolver los tokens como están
+        return { result: tokens.join(" "), counter: tempVarCounter }
+      }
+
+      // Dividir en operando izquierdo y derecho
+      const operator = tokens[minPrecedenceIdx]
+      const leftTokens = tokens.slice(0, minPrecedenceIdx)
+      const rightTokens = tokens.slice(minPrecedenceIdx + 1)
+
+      // Procesar recursivamente los operandos
+      const leftResult = generateTripletsRecursive(leftTokens, tempVarCounter)
+      const rightResult = generateTripletsRecursive(rightTokens, leftResult.counter)
+
+      // Crear una nueva variable temporal
+      const tempVar = `T${rightResult.counter}`
+      const newCounter = rightResult.counter + 1
+
+      // Descripción del operador
+      const opDesc: { [key: string]: string } = {
         "+": "suma",
         "-": "resta",
         "*": "multiplica",
         "/": "divide",
       }
 
-      result.push({
-        object: temp,
-        source: operand2,
-        operator: operator,
-        description: `Se ${operatorDesc[operator as keyof typeof operatorDesc]} el valor de ${operand2} a la variable temporal`,
-      })
+      // Generar tripletas
+      if (leftResult.result.startsWith("T")) {
+        // No necesitamos una tripleta adicional si el resultado izquierdo ya es una variable temporal
+      } else {
+        result.push({
+          object: tempVar,
+          source: leftResult.result,
+          operator: "=",
+          description: `Asigna el valor de ${leftResult.result} a una variable temporal`,
+        })
+      }
 
       result.push({
-        object: leftSide,
-        source: temp,
-        operator: "=",
-        description: `Se asigna la variable temporal al identificador`,
+        object: tempVar,
+        source: rightResult.result,
+        operator: operator,
+        description: `Se ${opDesc[operator]} el valor de ${rightResult.result} a la variable temporal`,
       })
+
+      return { result: tempVar, counter: newCounter }
     }
+
+    // Generar tripletas para la expresión
+    const finalResult = generateTripletsRecursive(tokens)
+
+    // Agregar la asignación final
+    result.push({
+      object: leftSide,
+      source: finalResult.result,
+      operator: "=",
+      description: `Se asigna el resultado final a ${leftSide}`,
+    })
 
     return result
   }
@@ -514,6 +630,26 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
           // Hay una asignación con algo a la derecha
           const leftSide = codeTokens[assignIndex - 1].value
           const rightSideTokens = codeTokens.slice(assignIndex + 1)
+
+          // Verificar si hay operadores compuestos (+=, -=, etc.)
+          if (leftSide.endsWith("+") || leftSide.endsWith("-") || leftSide.endsWith("*") || leftSide.endsWith("/")) {
+            // No procesar operadores compuestos no soportados
+            return
+          }
+
+          // Verificar si hay tokens adyacentes sin operador entre ellos
+          let hasSyntaxError = false
+          for (let i = 0; i < rightSideTokens.length - 1; i++) {
+            if (rightSideTokens[i].type === "IDEN" && rightSideTokens[i + 1].type === "IDEN") {
+              hasSyntaxError = true
+              break
+            }
+          }
+
+          if (hasSyntaxError) {
+            // No procesar expresiones con errores de sintaxis
+            return
+          }
 
           // Construir la expresión completa sin comentarios
           let expression = `${leftSide} = `
