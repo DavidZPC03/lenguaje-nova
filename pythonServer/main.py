@@ -135,7 +135,15 @@ class Lexer:
         for line in self.text.split("\n"):
             tokens_line = []
             last_end = 0
-            for match in re.finditer("|".join(f"({pattern})" for pattern, _ in patterns), line):
+            
+            # Primero verificar si hay un comentario en la línea
+            comment_match = re.search(r'//.*', line)
+            comment_start = len(line) if comment_match is None else comment_match.start()
+            
+            # Solo procesar la parte de la línea antes del comentario
+            line_to_process = line[:comment_start]
+            
+            for match in re.finditer("|".join(f"({pattern})" for pattern, _ in patterns), line_to_process):
                 start, end = match.span()
                 if start > last_end:
                     unrecognized_text = line[last_end:start].strip()
@@ -218,6 +226,10 @@ class Lexer:
         
         # Verificar operadores no válidos
         for i, token in enumerate(self.tokens):
+            # Ignorar tokens de comentarios
+            if token['type'] == 'COMM':
+                continue
+            
             # Detectar operadores no soportados de forma individual
             if token['type'] == 'AOP%':
                 errors.append({
@@ -321,6 +333,10 @@ class Lexer:
         
         # Verificar variables y otros errores
         for token in self.tokens:
+            # Ignorar tokens de comentarios
+            if token['type'] == 'COMM':
+                continue
+            
             if token['type'] == 'IDEN' and not token['value'].startswith('_'):
                 # Verificar si ya existe un error para esta variable en esta línea
                 existing_error = any(
@@ -678,7 +694,104 @@ class Lexer:
 
         return False, f"Error sintáctico en línea {line_number}: Estructura no reconocida"
 
-# Ruta para tokenizar
+# Add a function to convert infix to postfix notation
+def infix_to_postfix(expression):
+    precedence = {'+': 1, '-': 1, '*': 2, '/': 2}
+    output = []
+    operators = []
+    
+    tokens = re.findall(r'[a-zA-Z0-9_]+|[+\-*/()]', expression)
+    
+    for token in tokens:
+        if re.match(r'[a-zA-Z0-9_]+', token):
+            # Operand
+            output.append(token)
+        elif token == '(':
+            operators.append(token)
+        elif token == ')':
+            while operators and operators[-1] != '(':
+                output.append(operators.pop())
+            operators.pop()  # Discard the '('
+        else:
+            # Operator
+            while (operators and operators[-1] != '(' and 
+                   precedence.get(operators[-1], 0) >= precedence.get(token, 0)):
+                output.append(operators.pop())
+            operators.append(token)
+    
+    while operators:
+        output.append(operators.pop())
+    
+    return ' '.join(output)
+
+# Add a function to convert infix to prefix notation
+def infix_to_prefix(expression):
+    # Reverse the expression and swap ( and )
+    reversed_expr = ''.join(reversed(expression))
+    reversed_expr = reversed_expr.replace('(', 'temp').replace(')', '(').replace('temp', ')')
+    
+    # Convert to postfix
+    postfix = infix_to_postfix(reversed_expr)
+    
+    # Reverse the result
+    return ' '.join(reversed(postfix.split()))
+
+# Add a function to generate triplets
+def generate_triplets(expression):
+    triplets = []
+    tokens = re.findall(r'[a-zA-Z0-9_]+|[+\-*/=]', expression)
+    
+    if len(tokens) < 3:
+        return triplets
+    
+    # Simple case for assignment expressions like "x = y + z"
+    if '=' in tokens:
+        equal_index = tokens.index('=')
+        left_side = tokens[equal_index - 1]
+        right_side = tokens[equal_index + 1:]
+        
+        if len(right_side) == 1:
+            # Simple assignment: x = y
+            triplets.append({
+                'object': left_side,
+                'source': right_side[0],
+                'operator': '=',
+                'description': f"Asigna el valor de {right_side[0]} a {left_side}"
+            })
+        elif len(right_side) == 3 and right_side[1] in ['+', '-', '*', '/']:
+            # Assignment with operation: x = y + z
+            temp = "T1"
+            triplets.append({
+                'object': temp,
+                'source': right_side[0],
+                'operator': '=',
+                'description': f"Asigna el valor de {right_side[0]} a una variable temporal"
+            })
+            
+            op_desc = {
+                '+': 'suma',
+                '-': 'resta',
+                '*': 'multiplica',
+                '/': 'divide'
+            }
+            
+            triplets.append({
+                'object': temp,
+                'source': right_side[2],
+                'operator': right_side[1],
+                'description': f"Se {op_desc.get(right_side[1], 'opera')} el valor de {right_side[2]} a la variable temporal"
+            })
+            
+            triplets.append({
+                'object': left_side,
+                'source': temp,
+                'operator': '=',
+                'description': f"Se asigna la variable temporal al identificador"
+            })
+    
+    return triplets
+
+# Modify the tokenize route to include expression analysis
 @app.route("/tokenize", methods=["POST"])
 def tokenize():
     data = request.get_json()
@@ -690,7 +803,46 @@ def tokenize():
     errors = lex.detect_errors()
     syntax_results = lex.check_syntax()
     
-    # Combinar errores léxicos y sintácticos, evitando duplicados
+    # Analyze expressions
+    expressions = []
+    triplets = []
+    
+    # Group tokens by line
+    lines = {}
+    for token in tokens:
+        line = token['line']
+        if line not in lines:
+            lines[line] = []
+        lines[line].append(token)
+    
+    # Find expressions in the code
+    for line_num, line_tokens in lines.items():
+        line_text = ' '.join([t['value'] for t in line_tokens])
+        
+        # Simple detection of expressions (this can be improved)
+        has_assignment = any(t['type'] == 'ASSGN' for t in line_tokens)
+        has_operator = any(t['type'] in ['AOP+', 'AOP-', 'AOP*', 'AOP/'] for t in line_tokens)
+        
+        if has_assignment and has_operator:
+            # Extract the expression
+            expression = ''.join([t['value'] for t in line_tokens])
+            
+            # Convert to prefix and postfix
+            prefix = infix_to_prefix(expression)
+            postfix = infix_to_postfix(expression)
+            
+            expressions.append({
+                'line': line_num,
+                'expression': expression,
+                'prefix': prefix,
+                'postfix': postfix
+            })
+            
+            # Generate triplets
+            expr_triplets = generate_triplets(expression)
+            triplets.extend(expr_triplets)
+    
+    # Combine errors léxicos y sintácticos, evitando duplicados
     syntax_errors = [
         {'line': res['line'], 'type': 'SYNTAX_ERROR', 'message': res['message']} 
         for res in syntax_results if not res['valid']
@@ -726,9 +878,10 @@ def tokenize():
         "identificadores": identifiers,
         "tokens": tokens,
         "errores": unique_errors,
-        "syntaxResults": [{'line': res['line'], 'valid': res['valid'], 'message': res['message']} for res in syntax_results]
+        "syntaxResults": [{'line': res['line'], 'valid': res['valid'], 'message': res['message']} for res in syntax_results],
+        "expressions": expressions,
+        "triplets": triplets
     })
 
 if __name__ == "__main__":
     app.run(debug=True)
-

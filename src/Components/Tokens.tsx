@@ -1,6 +1,20 @@
 "use client"
 
-import { Box, Button, Flex, Heading, IconButton, Text, Table, Thead, Tbody, Tr, Th, Td } from "@chakra-ui/react"
+import {
+  Box,
+  Button,
+  Flex,
+  Heading,
+  IconButton,
+  Text,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TabPanel,
+} from "@chakra-ui/react"
 import { FiUpload, FiCode } from "react-icons/fi"
 import { javascript } from "@codemirror/lang-javascript"
 import ReactCodeMirror from "@uiw/react-codemirror"
@@ -17,7 +31,6 @@ import {
   TabList,
   TabPanels,
   Tab,
-  TabPanel,
   Progress,
   Stat,
   StatLabel,
@@ -74,6 +87,20 @@ interface SymbolBalance {
   opened: number
   closed: number
   isBalanced: boolean
+}
+
+// Add these interfaces after the existing interfaces
+interface ExpressionData {
+  line: number
+  expression: string
+  prefix: string
+}
+
+interface TripletData {
+  object: string
+  source: string
+  operator: string
+  description: string
 }
 
 // Definición de reglas sintácticas
@@ -226,8 +253,10 @@ const closingSymbols = {
 const controlStructures = {
   IF: { end: "CH}", type: "if" },
   ELSE: { end: "CH}", type: "else" },
+  ELIF: { end: "CH}", type: "elseif" },
   FOR: { end: "CH}", type: "for" },
   WHI: { end: "CH}", type: "while" },
+  DO: { end: "CH}", type: "do" },
   FCTN: { end: "CH}", type: "function" },
 }
 
@@ -363,6 +392,11 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
 
   const { isOpen: isSyntaxOpen, onOpen: onSyntaxOpen, onClose: onSyntaxClose } = useDisclosure()
   const { isOpen: isSemanticOpen, onOpen: onSemanticOpen, onClose: onSemanticClose } = useDisclosure()
+  const { isOpen: isIntermediateOpen, onOpen: onIntermediateOpen, onClose: onIntermediateClose } = useDisclosure()
+
+  // Add these state variables inside the Tokens component
+  const [expressions, setExpressions] = useState<ExpressionData[]>([])
+  const [triplets, setTriplets] = useState<TripletData[]>([])
 
   // Estados para el análisis semántico
   const [semanticErrors, setSemanticErrors] = useState<SemanticError[]>([])
@@ -370,6 +404,151 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
   const [symbolBalance, setSymbolBalance] = useState<SymbolBalance[]>([])
   const [controlStructureBalance, setControlStructureBalance] = useState<any[]>([])
   const [unusedStructures, setUnusedStructures] = useState<string[]>([])
+
+  // Función para convertir una expresión a notación prefija
+  const convertToPrefix = (expression: string): string => {
+    // Primero separamos la parte izquierda y derecha de la asignación
+    const parts = expression.split("=")
+    if (parts.length < 2) return expression
+
+    const leftSide = parts[0].trim()
+    const rightSide = parts[1].trim()
+
+    // Buscamos operadores en el lado derecho
+    const operatorMatch = rightSide.match(/[+\-*/]/)
+    if (!operatorMatch) return `${leftSide} = ${rightSide}`
+
+    const operator = operatorMatch[0]
+    const operatorIndex = rightSide.indexOf(operator)
+
+    // Extraemos los operandos
+    const operand1 = rightSide.substring(0, operatorIndex).trim()
+    const operand2 = rightSide.substring(operatorIndex + 1).trim()
+
+    // Construimos la notación prefija
+    return `${leftSide} = ${operator} ${operand1} ${operand2}`
+  }
+
+  // Modificar la función generateTriplets para mejorar la detección de expresiones
+  const generateTriplets = (expression: string): TripletData[] => {
+    const result: TripletData[] = []
+
+    // Primero separamos la parte izquierda y derecha de la asignación
+    const parts = expression.split("=")
+    if (parts.length < 2) return result
+
+    const leftSide = parts[0].trim()
+    const rightSide = parts[1].trim()
+
+    // Buscamos operadores en el lado derecho
+    const operatorMatch = rightSide.match(/[+\-*/]/)
+
+    if (!operatorMatch) {
+      // Asignación simple: x = y
+      result.push({
+        object: leftSide,
+        source: rightSide,
+        operator: "=",
+        description: `Asigna el valor de ${rightSide} a ${leftSide}`,
+      })
+    } else {
+      const operator = operatorMatch[0]
+      const operatorIndex = rightSide.indexOf(operator)
+
+      // Extraemos los operandos
+      const operand1 = rightSide.substring(0, operatorIndex).trim()
+      const operand2 = rightSide.substring(operatorIndex + 1).trim()
+
+      // Generamos las tripletas
+      const temp = `T1`
+
+      result.push({
+        object: temp,
+        source: operand1,
+        operator: "=",
+        description: `Asigna el valor de ${operand1} a una variable temporal`,
+      })
+
+      const operatorDesc = {
+        "+": "suma",
+        "-": "resta",
+        "*": "multiplica",
+        "/": "divide",
+      }
+
+      result.push({
+        object: temp,
+        source: operand2,
+        operator: operator,
+        description: `Se ${operatorDesc[operator as keyof typeof operatorDesc]} el valor de ${operand2} a la variable temporal`,
+      })
+
+      result.push({
+        object: leftSide,
+        source: temp,
+        operator: "=",
+        description: `Se asigna la variable temporal al identificador`,
+      })
+    }
+
+    return result
+  }
+
+  // Modificar la función analyzeExpressions para ignorar comentarios
+  const analyzeExpressions = () => {
+    const newExpressions: ExpressionData[] = []
+    const newTriplets: TripletData[] = []
+
+    // Find expressions in the code
+    Object.entries(lines).forEach(([lineNumber, lineTokens]) => {
+      const line = Number.parseInt(lineNumber)
+
+      // Filtrar tokens de comentarios
+      const codeTokens = lineTokens.filter((token) => token.type !== "COMM")
+
+      // Detectar asignaciones
+      if (codeTokens.some((t) => t.type === "ASSGN")) {
+        const assignIndex = codeTokens.findIndex((t) => t.type === "ASSGN")
+
+        if (assignIndex > 0 && assignIndex < codeTokens.length - 1) {
+          // Hay una asignación con algo a la derecha
+          const leftSide = codeTokens[assignIndex - 1].value
+          const rightSideTokens = codeTokens.slice(assignIndex + 1)
+
+          // Construir la expresión completa sin comentarios
+          let expression = `${leftSide} = `
+          expression += rightSideTokens
+            .filter((t) => t.type !== "COMM") // Filtrar comentarios
+            .map((t) => t.value)
+            .join("")
+
+          // Limpiar cualquier comentario restante
+          expression = expression.split("//")[0].trim()
+
+          // Convertir a notación prefija
+          const prefix = convertToPrefix(expression)
+
+          newExpressions.push({
+            line,
+            expression,
+            prefix,
+          })
+
+          // Generar tripletas
+          const expressionTriplets = generateTriplets(expression)
+          if (expressionTriplets.length > 0) {
+            newTriplets.push(...expressionTriplets)
+          }
+        }
+      }
+    })
+
+    setExpressions(newExpressions)
+    setTriplets(newTriplets)
+
+    // Open the modal
+    onIntermediateOpen()
+  }
 
   // Función para realizar el análisis semántico
   const performSemanticAnalysis = () => {
@@ -1028,6 +1207,9 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
           <Button onClick={performSemanticAnalysis} colorScheme="teal" leftIcon={<FiCode />}>
             Analizador Semántico
           </Button>
+          <Button onClick={analyzeExpressions} colorScheme="purple" leftIcon={<FiCode />}>
+            Código Intermedio
+          </Button>
           <Button onClick={downloadTokens} colorScheme="blue" isDisabled={errores.length > 0}>
             Descargar tokens
           </Button>
@@ -1296,7 +1478,95 @@ export function Tokens({ tokens, errores, syntaxResults = [], handleCodeChange }
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      {/* Modal para código intermedio */}
+      <Modal isOpen={isIntermediateOpen} onClose={onIntermediateClose} size="xl">
+        <ModalOverlay />
+        <ModalContent bg="white" color="black" borderRadius="md" maxW="800px" width="90%">
+          <ModalHeader>Código Intermedio</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <Tabs variant="enclosed" colorScheme="purple">
+              <TabList>
+                <Tab>Expresiones</Tab>
+                <Tab>Tripletas</Tab>
+              </TabList>
+
+              <TabPanels>
+                {/* Panel de Expresiones */}
+                <TabPanel>
+                  <Box mb={4}>
+                    <Heading size="md" mb={2}>
+                      Expresiones Aritméticas
+                    </Heading>
+                    {expressions.length > 0 ? (
+                      <Table variant="simple" size="sm">
+                        <Thead>
+                          <Tr>
+                            <Th>Línea</Th>
+                            <Th>Expresión</Th>
+                            <Th>Notación Prefija</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {expressions.map((expr, index) => (
+                            <Tr key={index}>
+                              <Td>{expr.line}</Td>
+                              <Td>{expr.expression}</Td>
+                              <Td>{expr.prefix}</Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    ) : (
+                      <Text>No se detectaron expresiones aritméticas</Text>
+                    )}
+                  </Box>
+                </TabPanel>
+
+                {/* Panel de Tripletas */}
+                <TabPanel>
+                  <Box mb={4}>
+                    <Heading size="md" mb={2}>
+                      Tripletas
+                    </Heading>
+                    {triplets.length > 0 ? (
+                      <Table variant="simple" size="sm">
+                        <Thead>
+                          <Tr>
+                            <Th>Dato Objeto</Th>
+                            <Th>Dato Fuente</Th>
+                            <Th>Operador</Th>
+                            <Th>Descripción</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {triplets.map((triplet, index) => (
+                            <Tr key={index}>
+                              <Td>{triplet.object}</Td>
+                              <Td>{triplet.source}</Td>
+                              <Td>{triplet.operator}</Td>
+                              <Td>{triplet.description}</Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    ) : (
+                      <Text>No se generaron tripletas</Text>
+                    )}
+                  </Box>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+
+            <Flex justify="space-between" mt={6}>
+              <Button onClick={onIntermediateClose} colorScheme="gray">
+                Cerrar
+              </Button>
+            </Flex>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </>
   )
 }
-
